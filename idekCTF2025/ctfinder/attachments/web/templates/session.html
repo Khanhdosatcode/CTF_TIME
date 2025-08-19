@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTFinder AI Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script nonce="{{ g.csp_nonce }}">
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'claude-orange': '#FF6B35',
+                        'claude-bg': '#F7F7F8',
+                        'claude-dark': '#2F2F2F'
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-claude-bg text-gray-900 font-sans">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <a href="/" class="text-claude-orange hover:text-orange-600 transition-colors">
+                <i class="fas fa-arrow-left text-lg"></i>
+            </a>
+            <h1 class="text-xl font-semibold text-claude-dark" id="sessionTitle">Loading...</h1>
+            <button id="deleteSessionBtn" class="text-red-500 hover:text-red-700 transition-colors ml-2" title="채팅 삭제">
+                <i class="fas fa-trash text-sm"></i>
+            </button>
+        </div>
+        <div class="flex items-center space-x-4">
+            <button id="apiKeyBtn" class="bg-claude-orange text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600 transition-colors">
+                <i class="fas fa-key mr-2"></i>API Key
+            </button>
+            <div class="relative">
+                <button id="userMenuBtn" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900">
+                    <i class="fas fa-user-circle text-2xl"></i>
+                    <span id="username" class="text-sm"></span>
+                    <i class="fas fa-chevron-down text-xs"></i>
+                </button>
+                <div id="userMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border hidden z-50">
+                    <button id="logoutBtn" class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Chat Area -->
+    <div class="flex flex-col" style="height: calc(100vh - 64px);">
+        <!-- Chat Messages -->
+        <div id="chatContainer" class="flex-1 overflow-y-auto p-6">
+            <!-- Loading indicator for fetching older messages -->
+            <div id="loadingOlder" class="loading-messages hidden">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-claude-orange mx-auto mb-2"></div>
+                <span class="text-sm">Loading older messages...</span>
+            </div>
+            
+            <div id="messagesContainer" class="space-y-8 max-w-4xl mx-auto">
+                <!-- Message pairs will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="border-t border-gray-200 p-4">
+            <div class="max-w-4xl mx-auto">
+                <div class="flex space-x-4">
+                    <div class="flex-1 relative">
+                        <textarea 
+                            id="messageInput" 
+                            {% if user_data.is_admin %}disabled{% endif %}
+                            placeholder="Enter your message..."
+                            class="w-full p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-claude-orange focus:border-transparent"
+                            rows="1"
+                            maxlength="4000"
+                        ></textarea>
+                        <div class="absolute bottom-2 right-2 text-xs text-gray-400">
+                            <span id="charCount">0</span>/4000
+                        </div>
+                    </div>
+                    <button 
+                        id="sendBtn" 
+                        {% if user_data.is_admin %}disabled{% endif %}
+                        class="bg-claude-orange text-white px-6 py-4 rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div id="apiKeyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 class="text-lg font-semibold mb-4">Set Claude API Key</h3>
+            <p class="text-gray-600 mb-4 text-sm">To use Claude API, please enter your API key.</p>
+            <input 
+                type="password" 
+                id="apiKeyInput" 
+                placeholder="sk-ant-..." 
+                class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-claude-orange focus:border-transparent mb-4"
+            >
+            <div class="flex space-x-3">
+                <button id="saveApiKeyBtn" class="flex-1 bg-claude-orange text-white py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors">
+                    Save
+                </button>
+                <button id="cancelApiKeyBtn" class="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" class="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 hidden">
+        <div class="flex items-center space-x-3">
+            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-claude-orange"></div>
+            <span class="text-sm text-gray-600">AI is responding...</span>
+        </div>
+    </div>
+
+    <script type="application/json" id="initial-data">
+        {
+            "session": {{ session_data | tojson }},
+            "messages": {{ messages_data | tojson }},
+            "user": {{ user_data | tojson }},
+            "report_id": {{ report_id | tojson if report_id else 'null' }}
+        }
+    </script>
+    
+    <script nonce="{{ g.csp_nonce }}">
+        const initialData = JSON.parse(document.getElementById('initial-data').textContent);
+        const INITIAL_SESSION_DATA = initialData.session;
+        const INITIAL_MESSAGES_DATA = initialData.messages;
+        const INITIAL_USER_DATA = initialData.user;
+        const INITIAL_REPORT_ID = initialData.report_id;
+        
+        let currentSessionId = INITIAL_SESSION_DATA.id;
+        let eventSource = null;
+        let isStreaming = false;
+        let isLoadingOlder = false;
+        let oldestSequenceId = null;
+        let hasMoreMessages = true;
+        let sessionData = INITIAL_SESSION_DATA;
+
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const messagesContainer = document.getElementById('messagesContainer');
+        const chatContainer = document.getElementById('chatContainer');
+        const charCount = document.getElementById('charCount');
+        const userMenuBtn = document.getElementById('userMenuBtn');
+        const userMenu = document.getElementById('userMenu');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const apiKeyBtn = document.getElementById('apiKeyBtn');
+        const apiKeyModal = document.getElementById('apiKeyModal');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+        const cancelApiKeyBtn = document.getElementById('cancelApiKeyBtn');
+        const usernameElement = document.getElementById('username');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const sessionTitle = document.getElementById('sessionTitle');
+        const loadingOlder = document.getElementById('loadingOlder');
+        const deleteSessionBtn = document.getElementById('deleteSessionBtn');
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            await checkAuth();
+            loadInitialData();
+            setupEventListeners();
+            setupLazyLoading();
+            
+            if (INITIAL_USER_DATA && INITIAL_USER_DATA.is_admin) {
+                await saveReportLog();
+            }
+        });
+
+        async function saveReportLog() {
+            const allMessages = messagesContainer.querySelectorAll('.message.user, .message-pair');
+            let userMessage = null;
+            
+            for (let i = allMessages.length - 1; i >= 0; i--) {
+                const messageElement = allMessages[i];
+                
+                if (messageElement.classList.contains('user')) {
+                    const proseContent = messageElement.querySelector('.prose');
+                    if (proseContent) {
+                        userMessage = proseContent.innerHTML.trim();
+                        break;
+                    }
+                }
+                
+                if (messageElement.classList.contains('message-pair')) {
+                    const userDiv = messageElement.querySelector('.justify-end .prose');
+                    if (userDiv) {
+                        userMessage = userDiv.innerHTML.trim();
+                        break;
+                    }
+                }
+            }
+
+            if (!userMessage) {
+                console.warn('No user message found to save report log');
+                return;
+            }
+
+            userMessage = userMessage
+                .replace(/\n/g, '')
+                .replace(/\r/g, '')
+                .replace(/\t/g, '')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+    
+            try {
+                const response = await fetch(`/admin/sessions/${currentSessionId}/report`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        report_message: userMessage,
+                        reporter_id: INITIAL_USER_DATA.user_id
+                    })
+                });
+                
+                if (response.ok) {
+                    console.log('Report log saved');
+                } else {
+                    console.warn('Report log save failed:', response.status);
+                }
+            } catch (error) {
+                console.error('Admin check error:', error);
+            }
+        }
+
+        function cleanupEventSource() {
+            if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
+                console.log('Cleaning up EventSource connection');
+                try {
+                    eventSource.close();
+                } catch (e) {
+                    console.warn('Error closing EventSource during cleanup:', e);
+                }
+                eventSource = null;
+            }
+            isStreaming = false;
+        }
+
+        window.addEventListener('beforeunload', cleanupEventSource);
+        window.addEventListener('pagehide', cleanupEventSource);
+        window.addEventListener('unload', cleanupEventSource);
+        
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && eventSource) {
+                console.log('Page hidden, cleaning up EventSource');
+                cleanupEventSource();
+            }
+        });
+
+        window.addEventListener('popstate', cleanupEventSource);
+
+        async function checkAuth() {
+            if (INITIAL_USER_DATA && INITIAL_USER_DATA.username) {
+                usernameElement.textContent = INITIAL_USER_DATA.username;
+            } else {
+                try {
+                    const response = await fetch('/sessions/', {
+                        method: 'GET',
+                        credentials: 'same-origin'
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        usernameElement.textContent = data.user.username;
+                    } else if (response.status === 401) {
+                        window.location.href = '/auth/login';
+                    } else {
+                        console.error('Auth check failed:', response.status);
+                        window.location.href = '/auth/login';
+                    }
+                } catch (error) {
+                    console.error('Auth check error:', error);
+                    window.location.href = '/auth/login';
+                }
+            }
+        }
+
+        function loadInitialData() {
+            sessionTitle.textContent = INITIAL_SESSION_DATA.title;
+            
+            if (INITIAL_MESSAGES_DATA && INITIAL_MESSAGES_DATA.length > 0) {
+                const chronologicalMessages = [...INITIAL_MESSAGES_DATA].reverse();
+                displayMessages(chronologicalMessages);
+                oldestSequenceId = Math.min(...INITIAL_MESSAGES_DATA.map(m => m.sequence_id));
+                
+                hasMoreMessages = INITIAL_MESSAGES_DATA.length === 10 || oldestSequenceId > 1;
+            } else {
+                hasMoreMessages = false;
+            }
+            
+            scrollToBottom();
+        }
+
+        function setupLazyLoading() {
+            chatContainer.addEventListener('scroll', async function() {
+                if (chatContainer.scrollTop < 100 && hasMoreMessages && !isLoadingOlder) {
+                    await loadOlderMessages();
+                }
+            });
+        }
+
+        async function loadOlderMessages() {
+            if (!oldestSequenceId || isLoadingOlder) return;
+            
+            isLoadingOlder = true;
+            loadingOlder.classList.remove('hidden');
+    
+            const requestId = Date.now();
+            const currentOldestId = oldestSequenceId;
+            
+            try {
+                const response = await fetch(`/sessions/${currentSessionId}/messages?last_sequence_id=${oldestSequenceId}&limit=10&reverse=true`, {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const olderMessages = data.messages.reverse();
+                    
+                    if (olderMessages.length === 0) {
+                        hasMoreMessages = false;
+                    } else {
+                        const oldScrollHeight = chatContainer.scrollHeight;
+                        
+                        prependMessages(olderMessages);
+                        
+                        oldestSequenceId = Math.min(...olderMessages.map(m => m.sequence_id));
+                        
+                        hasMoreMessages = olderMessages.length === 10 && oldestSequenceId > 1;
+                        
+                        chatContainer.scrollTop = chatContainer.scrollHeight - oldScrollHeight;
+                    }
+                } else {
+                    const errorResult = await handleApiError(response, 'Failed to load older messages.');
+                    if (!errorResult.handled) {
+                        console.error(errorResult.message);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load older messages:', error);
+            } finally {
+                isLoadingOlder = false;
+                loadingOlder.classList.add('hidden');
+            }
+        }
+
+        function setupEventListeners() {
+            messageInput.addEventListener('input', function() {
+                const length = this.value.length;
+                charCount.textContent = length;
+                sendBtn.disabled = length === 0 || isStreaming;
+                
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+            });
+
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            sendBtn.addEventListener('click', sendMessage);
+
+            userMenuBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                userMenu.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', function() {
+                userMenu.classList.add('hidden');
+            });
+
+            logoutBtn.addEventListener('click', logout);
+
+            deleteSessionBtn.addEventListener('click', deleteSession);
+
+            document.addEventListener('click', function(e) {
+                if (e.target.id && e.target.id.startsWith('checkReportBtn-')) {
+                    if (e.target.tagName.toLowerCase() === 'button') {
+                        e.preventDefault();
+                    }
+                    checkReport();
+                }
+                if (e.target.id === 'reportBtn') {
+                    e.preventDefault();
+                    reportSession();
+                }
+            });
+
+            apiKeyBtn.addEventListener('click', function() {
+                clearApiKeyModal();
+                apiKeyModal.classList.remove('hidden');
+                apiKeyInput.focus();
+            });
+
+            cancelApiKeyBtn.addEventListener('click', function() {
+                clearApiKeyModal();
+                apiKeyModal.classList.add('hidden');
+            });
+
+            saveApiKeyBtn.addEventListener('click', saveApiKey);
+
+            apiKeyModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    clearApiKeyModal();
+                    this.classList.add('hidden');
+                }
+            });
+        }
+
+        function displayMessages(messages) {
+            const messagePairs = groupMessagesIntoPairs(messages);
+            messagePairs.forEach(pair => {
+                addMessagePair(pair);
+            });
+        }
+
+        function groupMessagesIntoPairs(messages) {
+            const pairs = [];
+            let currentPair = null;
+            
+            for (const message of messages) {
+                if (message.role === 'user') {
+                    if (currentPair) {
+                        pairs.push(currentPair);
+                    }
+                    currentPair = { user: message, assistant: null };
+                } else if (message.role === 'assistant' || message.role === 'error-assistant') {
+                    if (currentPair) {
+                        currentPair.assistant = message;
+                        pairs.push(currentPair);
+                        currentPair = null;
+                    } else {
+                        pairs.push({ user: null, assistant: message });
+                    }
+                }
+            }
+            
+            if (currentPair) {
+                pairs.push(currentPair);
+            }
+            
+            return pairs;
+        }
+
+        function prependMessages(messages) {
+            for (let i = messages.length - 1; i >= 0; i--) {
+                const messageElement = createMessageElement(messages[i].role, messages[i].content);
+                if (messagesContainer.firstChild) {
+                    messagesContainer.insertBefore(messageElement, messagesContainer.firstChild);
+                } else {
+                    messagesContainer.appendChild(messageElement);
+                }
+            }
+        }
+
+        function addMessage(role, content, isNew = true) {
+            const messageElement = createMessageElement(role, content);
+            messagesContainer.appendChild(messageElement);
+            
+            if (isNew) {
+                scrollToBottom();
+            }
+            
+            return messageElement;
+        }
+
+        function addMessagePair(pair) {
+            const pairElement = createMessagePairElement(pair);
+            messagesContainer.appendChild(pairElement);
+            return pairElement;
+        }
+
+        function createMessagePairElement(pair) {
+            const pairElement = document.createElement('div');
+            pairElement.className = 'message-pair space-y-4';
+            
+            let pairHTML = '';
+            
+            if (pair.user) {
+                pairHTML += createSingleMessageHTML(pair.user.role, pair.user.content);
+            }
+            
+            if (pair.assistant) {
+                pairHTML += createSingleMessageHTML(pair.assistant.role, pair.assistant.content);
+            }
+            
+            pairElement.innerHTML = pairHTML;
+            return pairElement;
+        }
+
+        function updatePairWithAssistant(pairElement, assistantMessage) {
+            const assistantHTML = createSingleMessageHTML(assistantMessage.role, assistantMessage.content);
+            pairElement.insertAdjacentHTML('beforeend', assistantHTML);
+        }
+
+        function createSingleMessageHTML(role, content) {
+            const isUser = role === 'user';
+            const isError = role === 'error-assistant';
+            
+            return `
+                <div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
+                    <div class="flex max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'} items-start space-x-3">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center ${isUser ? 'bg-gray-300 ml-3' : 'bg-claude-orange mr-3'}">
+                            <i class="fas ${isUser ? 'fa-user' : 'fa-robot'} text-white text-sm"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="${isUser ? 'bg-claude-orange text-white rounded-2xl rounded-tr-md px-4 py-3' : 'bg-white border border-gray-200 rounded-2xl rounded-tl-md px-4 py-3'}">
+                                <div class="prose prose-sm max-w-none ${isUser ? 'text-white' : 'text-gray-800'}">
+                                    ${isError 
+                                        ? `<div class="text-red-500">
+                                            <p>
+                                                <strong>An error occurred.</strong>
+                                                <br>
+                                                ${formatMessage(content)}
+                                            </p>
+                                            <br>
+                                            ${INITIAL_USER_DATA.is_admin ? `
+                                            <button id="checkReportBtn-${INITIAL_REPORT_ID}" class="bg-red-500 text-white px-4 py-2 rounded-md">
+                                                Check Report ${INITIAL_REPORT_ID}
+                                            </button>` : `
+                                            <button id="reportBtn" class="bg-red-500 text-white px-4 py-2 rounded-md">
+                                                Report Session
+                                            </button>
+                                            `}
+                                            <br><br>
+                                            <p class="text-sm">
+                                                <strong>'You cannot send new messages until you report.'</strong>
+                                            </p>
+                                            </div>` 
+                                            : formatMessage(content)
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createMessageElement(role, content) {
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${role}`;
+            
+            const isUser = role === 'user';
+            const isError = role === 'error-assistant';
+            
+            messageElement.innerHTML = `
+                <div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
+                    <div class="flex max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'} items-start space-x-3">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center ${
+                            isUser ? 'bg-gray-300 ml-3' : 'bg-claude-orange mr-3'
+                        }">
+                            <i class="fas ${isUser ? 'fa-user' : 'fa-robot'} text-white text-sm"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="${
+                                isUser 
+                                    ? 'bg-claude-orange text-white rounded-2xl rounded-tr-md px-4 py-3' 
+                                    : 'bg-white border border-gray-200 rounded-2xl rounded-tl-md px-4 py-3'
+                            }">
+                                <div class="prose prose-sm max-w-none ${isUser ? 'text-white' : 'text-gray-800'}">
+                                    ${
+                                        isError
+                                            ? `<div class="text-red-500">
+                                                <p>
+                                                    <strong>An error occurred.</strong>
+                                                    <br>
+                                                    ${formatMessage(content)}
+                                                </p>
+                                                <br>
+                                                ${INITIAL_USER_DATA.is_admin ? `
+                                                <button id="checkReportBtn-${INITIAL_REPORT_ID}" class="bg-red-500 text-white px-4 py-2 rounded-md">
+                                                    Report ${INITIAL_REPORT_ID} Details
+                                                </button>
+                                                ` : `
+                                                <button id="reportBtn" class="bg-red-500 text-white px-4 py-2 rounded-md">
+                                                    Report Session
+                                                </button>
+                                                `}
+                                                <br><br>
+                                                <p class="text-sm">
+                                                    <strong>'You cannot send new messages until you report.'</strong>
+                                                </p>
+                                                </div>`
+                                                : formatMessage(content)
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            return messageElement;
+        }
+
+        function formatMessage(content) {
+            return content
+                .replace(/\n/g, '<br>')
+                .replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 rounded">$1</code>')
+                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        }
+
+        async function sendMessage() {
+            const content = messageInput.value.trim();
+            if (!content || isStreaming) return;
+            
+            messageInput.value = '';
+            charCount.textContent = '0';
+            sendBtn.disabled = true;
+            isStreaming = true;
+            loadingIndicator.classList.remove('hidden');
+
+            try {
+                const response = await fetch(`/sessions/${currentSessionId}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ content })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    addMessage('user', data.content);
+
+                    listenToStream(data.stream_channel);
+                } else {
+                    const errorResult = await handleApiError(response, 'Failed to send message.');
+                    if (!errorResult.handled) {
+                        alert(errorResult.message);
+                    }
+                    isStreaming = false;
+                    loadingIndicator.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Failed to send message:', error);
+                alert('Network error occurred while sending message.');
+                isStreaming = false;
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+
+        function listenToStream(channel) {
+            if (!currentSessionId) {
+                console.error('No current session ID for streaming');
+                isStreaming = false;
+                loadingIndicator.classList.add('hidden');
+                return;
+            }
+
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+
+            setTimeout(() => {
+                const streamUrl = `/sessions/${currentSessionId}/stream?channel=${encodeURIComponent(channel)}`;
+                try {
+                    eventSource = new EventSource(streamUrl);
+                    setupEventSourceHandlers(eventSource);
+                } catch (error) {
+                    console.error('Failed to create EventSource:', error);
+                    finishStreaming();
+                }
+            }, 100);
+        }
+
+        function setupEventSourceHandlers(es) {
+            let assistantMessageElement = null;
+            let fullContent = '';
+
+            es.onopen = function(e) {
+                console.log('SSE connection opened');
+            };
+
+            es.onmessage = function(e) {
+                try {
+                    const data = JSON.parse(e.data);
+                    
+                    switch(data.event) {
+                        case 'connected':
+                            console.log('Stream connected successfully');
+                            break;
+                            
+                        case 'heartbeat':
+                            break;
+                            
+                        case 'start':
+                            assistantMessageElement = addMessage('assistant', '<div class="typing-indicator"><span></span><span></span><span></span></div>', true);
+                            fullContent = '';
+                            break;
+                            
+                        case 'chunk':
+                            if (assistantMessageElement && data.content) {
+                                fullContent += data.content;
+                                updateMessageContent(assistantMessageElement, fullContent);
+                                scrollToBottom();
+                            }
+                            break;
+                            
+                        case 'complete':
+                            if (assistantMessageElement && data.content) {
+                                updateMessageContent(assistantMessageElement, data.content);
+                            }
+                            finishStreaming();
+                            break;
+                            
+                        case 'error':
+                            console.error('Streaming error:', data.message);
+                            if (!assistantMessageElement) {
+                                addMessage('assistant', `An error occurred: ${data.message}`, true);
+                            } else {
+                                updateMessageContent(assistantMessageElement, `An error occurred: ${data.message}`);
+                            }
+                            finishStreaming();
+                            break;
+                    }
+                } catch (error) {
+                    console.error('Error parsing SSE data:', error);
+                }
+            };
+
+            es.onerror = function(e) {
+                console.error('SSE error:', e);
+                if (!assistantMessageElement) {
+                    addMessage('assistant', 'An error occurred while receiving response.', true);
+                }
+                finishStreaming();
+            };
+
+            const timeoutId = setTimeout(() => {
+                if (isStreaming && es.readyState !== EventSource.CLOSED) {
+                    console.warn('Stream timeout');
+                    if (!assistantMessageElement) {
+                        addMessage('assistant', 'Response timeout.', true);
+                    }
+                    es.close();
+                    finishStreaming();
+                }
+            }, 20000);
+
+            const originalFinishStreaming = window.finishStreaming;
+            window.finishStreaming = function() {
+                clearTimeout(timeoutId);
+                window.finishStreaming = originalFinishStreaming;
+                originalFinishStreaming();
+            };
+        }
+
+        function updateMessageContent(messageElement, content) {
+            const contentDiv = messageElement.querySelector('.prose');
+            if (contentDiv) {
+                contentDiv.innerHTML = formatMessage(content);
+            }
+        }
+
+        function finishStreaming() {
+            isStreaming = false;
+            sendBtn.disabled = messageInput.value.trim().length === 0;
+            loadingIndicator.classList.add('hidden');
+            
+            if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
+                try {
+                    eventSource.close();
+                } catch (e) {
+                    console.warn('Error closing EventSource:', e);
+                }
+                eventSource = null;
+            }
+        }
+
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function handleApiError(response, defaultMessage = 'An error occurred while processing the request.') {
+            if (response.status === 401) {
+                try {
+                    const errorData = await response.json();
+                    if (errorData.error && errorData.error.includes('token required')) {
+                        apiKeyModal.classList.remove('hidden');
+                        return { handled: true, message: 'Claude API key is required. Please enter your API key.' };
+                    } else if (errorData.error && errorData.error.includes('login required')) {
+                        window.location.href = '/auth/login';
+                        return { handled: true };
+                    }
+                } catch (e) {
+                    window.location.href = '/auth/login';
+                    return { handled: true };
+                }
+            }
+            
+            try {
+                const errorData = await response.json();
+                return { handled: false, message: errorData.error || defaultMessage };
+            } catch (e) {
+                return { handled: false, message: defaultMessage };
+            }
+        }
+
+        async function logout() {
+            try {
+                const response = await fetch('/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                });
+
+                if (response.ok) {
+                    window.location.href = '/auth/login';
+                }
+            } catch (error) {
+                console.error('Logout failed:', error);
+                window.location.href = '/auth/login';
+            }
+        }
+
+        async function saveApiKey() {
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                showApiKeyError('Please enter your API key.');
+                return;
+            }
+
+            saveApiKeyBtn.disabled = true;
+            saveApiKeyBtn.textContent = 'Saving...';
+
+            try {
+                const response = await fetch('/tokens/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ token: apiKey })
+                });
+
+                if (response.ok) {
+                    apiKeyModal.classList.add('hidden');
+                    apiKeyInput.value = '';
+                    
+                    const successMsg = document.createElement('div');
+                    successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+                    successMsg.innerHTML = '<i class="fas fa-check mr-2"></i>API key saved successfully!';
+                    document.body.appendChild(successMsg);
+                    
+                    setTimeout(() => {
+                        successMsg.remove();
+                    }, 3000);
+                } else {
+                    const errorResult = await handleApiError(response, 'Failed to save API key.');
+                    if (!errorResult.handled) {
+                        showApiKeyError(errorResult.message);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to save API key:', error);
+                showApiKeyError('Network error occurred. Please try again.');
+            } finally {
+                saveApiKeyBtn.disabled = false;
+                saveApiKeyBtn.textContent = 'Save';
+            }
+        }
+
+        function showApiKeyError(message) {
+            const existingError = document.querySelector('#apiKeyError');
+            if (existingError) {
+                existingError.remove();
+            }
+
+            const errorDiv = document.createElement('div');
+            errorDiv.id = 'apiKeyError';
+            errorDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2';
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i>${message}`;
+            
+            apiKeyInput.parentNode.insertBefore(errorDiv, apiKeyInput.nextSibling);
+        }
+
+        function clearApiKeyModal() {
+            apiKeyInput.value = '';
+            
+            const existingError = document.querySelector('#apiKeyError');
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            saveApiKeyBtn.disabled = false;
+            saveApiKeyBtn.textContent = 'Save';
+        }
+
+        async function deleteSession() {
+            if (!confirm('Are you sure you want to delete this chat? Deleted chats cannot be recovered.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/sessions/${currentSessionId}`, {
+                    method: 'DELETE',
+                    credentials: 'same-origin'
+                });
+
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    const errorResult = await handleApiError(response, 'Failed to delete chat.');
+                    if (!errorResult.handled) {
+                        alert(errorResult.message);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to delete session:', error);
+                alert('Network error occurred while deleting chat.');
+            }
+        }
+
+        async function checkReport() {
+            // TODO : Make it work
+            const response = await fetch(`/admin/sessions/${currentSessionId}/report/detail`, {
+                method: 'GET',
+                credentials: 'same-origin'
+            });
+            const data = await response.json();
+        }
+
+        async function reportSession() {
+            const response = await fetch(`/sessions/${currentSessionId}/report`, {
+                method: 'GET',
+                credentials: 'same-origin'
+            });
+            const data = await response.json();
+            alert(data.message);
+        }
+    </script>
+</body>
+</html> 

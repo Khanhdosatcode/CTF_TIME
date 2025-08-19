@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>Notebook viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --cover: #f4a9c6;
+      --spine: #141414;
+      --label: #ffffff;
+      --ink: #111;
+      --radius: 14px;
+      --shadow: 0 10px 30px rgba(0, 0, 0, .25);
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    html,
+    body {
+      height: 100%
+    }
+
+    body {
+      margin: 0;
+      display: grid;
+      place-items: center;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background:
+        radial-gradient(60rem 60rem at 10% -10%, rgba(255, 255, 255, .5), transparent 50%),
+        linear-gradient(#edf2f7, #e6fffb);
+      padding: 24px;
+      background-image: url("https://ctf.sekai.team/themes/luna-vite/static/img/triangular-bg.svg"), linear-gradient(to bottom, #dddddd, #C6FDF1);
+      background-size: 3.5rem, auto;
+    }
+
+    /* --- composition notebook cover --- */
+    .cover {
+      position: relative;
+      width: min(92vw, 520px);
+      height: min(140vw, 720px);
+      background: var(--cover);
+      border-radius: 6px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .spine {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 22px;
+      background: var(--spine);
+      box-shadow: inset -2px 0 0 rgba(255, 255, 255, .08);
+    }
+
+    .label {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 52px;
+      width: min(86%, 360px);
+      background: var(--label);
+      border: 4px solid var(--ink);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: 0 6px 0 rgba(0, 0, 0, .08);
+      text-align: center;
+    }
+
+    .label h2 {
+      margin: 0 0 12px 0;
+      font-weight: 800;
+      letter-spacing: .04em;
+      font-size: clamp(14px, 2.8vw, 18px);
+    }
+
+    .ruled {
+      border-radius: 10px;
+      padding: 12px 10px 14px;
+      background:
+        repeating-linear-gradient(to bottom,
+          transparent 0,
+          transparent 26px,
+          rgba(0, 0, 0, .16) 26px,
+          rgba(0, 0, 0, .16) 27px);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 84px;
+    }
+
+    #visibleFrames {
+      display: block;
+      width: 100%;
+      align-self: flex-start;
+      padding: 0 0px;
+      border-radius: 8px;
+    }
+
+    .byline {
+      margin-top: 10px;
+      font-size: 12px;
+      letter-spacing: .05em;
+      opacity: .75;
+    }
+
+    .mascot {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 62px;
+      text-align: center;
+      font-size: 12px;
+      opacity: .6;
+      user-select: none;
+    }
+
+    .logo {
+      margin-top: 6px;
+      font-weight: 700;
+      letter-spacing: .08em;
+    }
+
+    #icon-wall-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="icon-wall-canvas"></canvas>
+
+  <!-- Notebook cover UI -->
+  <div class="cover" role="application" aria-label="Composition notebook">
+    <div class="spine" aria-hidden="true"></div>
+
+    <section class="label" aria-label="Notebook label">
+      <h2>COMPOSITION NOTEBOOK</h2>
+      <div class="ruled">
+        <div id="visibleFrames" title="Note (iframe view)"></div>
+      </div>
+      <div class="byline">Hatsune Miku</div>
+    </section>
+    <div class="mascot" aria-hidden="true">
+      <div class="logo">初音ミク</div>
+    </div>
+  </div>
+
+  <script>
+    const host = document.getElementById('visibleFrames');
+    // Shadow dom, no access to its children!!
+    const shadowRoot = host.attachShadow({ mode: 'closed' });
+
+    const style = document.createElement('style');
+    style.textContent = `
+      :host { display: block; width: 100%; }
+
+      .wrap {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-content: flex-start;
+        align-items: center;
+        gap: 0;
+      }
+
+      .wrap > iframe {
+        box-sizing: border-box;
+        border: 0;
+        padding: 0;
+        margin: 0;
+        width: 1ch;
+        height: 27px;
+        flex: 0 0 1ch;
+        display: block;
+        overflow: hidden;
+        outline: none;
+        box-shadow: none;
+      }`;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'wrap';
+
+    shadowRoot.appendChild(style);
+    shadowRoot.appendChild(wrap);
+
+    const uri = new URL(location.href);
+    const note = uri.searchParams.get('note') || 'my secret notes';
+
+    function srcFor(i, code) {
+      return `https://nbv-${i}-${code}.chals.sekai.team/`;
+    }
+
+    for (let i = 0; i < note.length; i++) {
+      const code = note.codePointAt(i);
+      const frame = document.createElement('iframe');
+      frame.scrolling = 'no';
+      frame.src = srcFor(i, code);
+      wrap.appendChild(frame);
+    }
+  </script>
+
+
+  <!-- This script block just handles the background. There's no exploits to be found here. -->
+  <script integrity="sha256-M4AVE+qW71QsqG4/DLzNYqY0XgcX37HdrCHVHpZri54=">
+    const BackgroundCanvasResources = {
+      canvas: null,
+      iconWallCanvas: null,
+      offscreenCanvas: null
+    };
+
+    const rad50 = 0.872665;
+    const rad40 = Math.PI / 2 - rad50;
+    const scale = 0.5;
+
+    function buildIconWallData(w, h, iconWall) {
+      const offscreenCanvas = document.createElement("canvas");
+      const offscreenCtx = offscreenCanvas.getContext("2d");
+
+      const a1 = w * Math.cos(rad40),
+        a2 = h * Math.cos(rad50),
+        b1 = h * Math.cos(rad40),
+        b2 = w * Math.cos(rad50);
+
+      const width = (b1 + b2) / scale;
+      const height = (a1 + a2 + 580) / scale;
+
+      offscreenCanvas.width = width;
+      offscreenCanvas.height = height;
+
+      const pattern = offscreenCtx.createPattern(iconWall, "repeat");
+      offscreenCtx.fillStyle = pattern;
+      offscreenCtx.fillRect(0, 0, width, height);
+      BackgroundCanvasResources.offscreenCanvas = offscreenCanvas;
+    }
+
+    function drawPatternScale(ctx, offscreenCanvas, startx, starty, width, height) {
+      ctx.save();
+      ctx.scale(scale, scale);
+      ctx.drawImage(offscreenCanvas, startx / scale, starty / scale, width / scale, height / scale);
+      ctx.restore();
+    }
+
+    function render(timer) {
+      timer = (timer / 30) % 580;
+      const { canvas, offscreenCanvas } = BackgroundCanvasResources;
+      if (canvas && offscreenCanvas) {
+        const ctx = canvas.getContext("2d");
+        ctx.save();
+        const w = canvas.width,
+          h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+        ctx.save();
+        ctx.rotate(rad50);
+        const a1 = w * Math.cos(rad40),
+          a2 = h * Math.cos(rad50),
+          b1 = h * Math.cos(rad40),
+          b2 = w * Math.cos(rad50);
+        ctx.translate(0, -timer);
+        drawPatternScale(ctx, offscreenCanvas, 0, -a1, b1 + b2, a1 + a2 + 580);
+        ctx.restore();
+      }
+    }
+
+    function frame(timer) {
+      render(timer);
+      return window.requestAnimationFrame(frame);
+    }
+
+    function IconWallCanvasInit() {
+      var canvas = document.getElementById("icon-wall-canvas");
+      if (!canvas) {
+        console.error("Canvas element not found");
+        return;
+      }
+
+      const iconWall = new Image();
+      iconWall.crossOrigin = "anonymous";
+      iconWall.onload = () => {
+        buildIconWallData(canvas.width, canvas.height, iconWall);
+      };
+      iconWall.src = "https://files.catbox.moe/6ti1xo.svg";
+
+      BackgroundCanvasResources.canvas = canvas;
+
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      window.addEventListener("resize", () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        buildIconWallData(canvas.width, canvas.height, iconWall);
+      });
+
+      window.requestAnimationFrame(frame);
+    }
+
+    window.addEventListener('load', IconWallCanvasInit);
+  </script>
+</body>
+
+</html>

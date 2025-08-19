@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+        content="base-uri 'self'; default-src 'self'; connect-src *; img-src https://files.catbox.moe https://ctf.sekai.team; style-src 'sha256-ifF3TykETemckjldyuU7+6UIz8PzV10UwSs80QVqdrw='; script-src 'sha256-KlXXtzFSL51b+gaC4lpBqXaDO+JV/1kY4umND6u2+58=' 'sha256-M4AVE+qW71QsqG4/DLzNYqY0XgcX37HdrCHVHpZri54=' 'wasm-unsafe-eval';">
+    <title>CCC - Viewer</title>
+    <style integrity="sha256-ifF3TykETemckjldyuU7+6UIz8PzV10UwSs80QVqdrw=">
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #ff6b6b;
+            margin-bottom: 20px;
+            font-weight: 300;
+            font-size: 2.5em;
+        }
+
+        #canvas {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            background: #000;
+            transition: transform 0.2s ease;
+        }
+
+        .drop-zone {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(102, 126, 234, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .drop-zone.active {
+            display: flex;
+        }
+
+        .drop-text {
+            color: white;
+            font-size: 2em;
+            font-weight: 300;
+            text-align: center;
+            padding: 40px;
+            border: 3px dashed rgba(255, 255, 255, 0.5);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .status {
+            color: rgba(0, 0, 0, 0.8);
+            margin-top: 20px;
+            font-size: 1.1em;
+        }
+
+        .error {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            padding: 10px 20px;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        .success {
+            color: #51cf66;
+            background: rgba(81, 207, 102, 0.1);
+            padding: 10px 20px;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        body {
+            background-image: url("https://ctf.sekai.team/themes/luna-vite/static/img/triangular-bg.svg"), linear-gradient(to bottom, #dddddd, #C6FDF1);
+            background-size: 3.5rem, auto;
+        }
+
+        #icon-wall-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="icon-wall-canvas"></canvas>
+
+    <div class="container">
+        <h1>Captivating Canvas Contraption</h1>
+        <canvas id="canvas" width="512" height="512"></canvas>
+        <div id="status" class="status">Drop a WASM file here or use the ?wasm=filename.wasm query parameter to get
+            started.</div>
+        <div>Drop a WASM file here or use the ?wasm=filename.wasm query parameter to get started.</div>
+        <div>Want to draw your own art? Visit the <a href="./editor.html">editor</a>.</div>
+        <div>Made something beautiful? Upload it to a site like <a href="https://litterbox.catbox.moe">catbox.moe</a>
+            and <a href="https://ctf.sekai.team/adminbot/ccc">share the link with me!</a>
+        </div>
+    </div>
+
+    <div id="dropZone" class="drop-zone">
+        <div class="drop-text">
+            Drop your WebAssembly file here
+        </div>
+    </div>
+
+    <script integrity="sha256-KlXXtzFSL51b+gaC4lpBqXaDO+JV/1kY4umND6u2+58=">
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const status = document.getElementById('status');
+        const dropZone = document.getElementById('dropZone');
+
+        let wasmModule = null;
+        let renderPixel = null;
+        let startTime = Date.now();
+        let animationId = null;
+
+        const imageData = ctx.createImageData(512, 512);
+        const data = imageData.data;
+
+        function setStatus(message, type = 'normal') {
+            status.textContent = message;
+            status.className = 'status';
+            if (type === 'error') status.className += ' error';
+            if (type === 'success') status.className += ' success';
+        }
+
+        async function loadWasm(wasmName, wasmData) {
+            try {
+                setStatus('Loading WebAssembly module...');
+
+                const wasmModule = await WebAssembly.instantiate(wasmData, {
+                    // stubs for AssemblyScript: https://www.assemblyscript.org/concepts.html#special-imports
+                    env: {
+                        abort: () => { },
+                        trace: () => { },
+                        seed: () => 0,
+                    }
+                });
+                const exports = wasmModule.instance.exports;
+
+                if (!exports.renderPixel) {
+                    throw new Error('WebAssembly module must export a "renderPixel" function');
+                }
+
+                renderPixel = exports.renderPixel;
+                setStatus(`Loaded ${wasmName} successfully`, 'success');
+
+                startRendering();
+            } catch (error) {
+                setStatus(`Error loading WASM: ${error.message}`, 'error');
+                console.error('WASM loading error:', error);
+            }
+        }
+
+        function startRendering() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+
+            startTime = Date.now();
+            renderFrame();
+        }
+
+        function renderFrame() {
+            if (!renderPixel) return;
+
+            const currentTime = Date.now();
+            const dt = (currentTime - startTime) / 1000;
+
+            // Render each pixel
+            for (let y = 0; y < 512; y++) {
+                for (let x = 0; x < 512; x++) {
+                    const index = (y * 512 + x) * 4;
+                    const color = renderPixel(x, y, dt);
+
+                    const r = (color >> 16) & 0xFF;
+                    const g = (color >> 8) & 0xFF;
+                    const b = color & 0xFF;
+
+                    data[index] = r;
+                    data[index + 1] = g;
+                    data[index + 2] = b;
+                    data[index + 3] = 255;
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+            animationId = requestAnimationFrame(renderFrame);
+        }
+
+        // Drag and drop functionality
+        document.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('active');
+        });
+
+        document.addEventListener('dragleave', (e) => {
+            if (e.clientX === 0 && e.clientY === 0) {
+                dropZone.classList.remove('active');
+            }
+        });
+
+        document.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('active');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.name.endsWith('.wasm')) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        loadWasm(file.name, event.target.result);
+                    };
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    setStatus('Please drop a .wasm file', 'error');
+                }
+            }
+        });
+
+        // URL parameter loading
+        const urlParams = new URLSearchParams(window.location.search);
+        const wasmUrl = urlParams.get('wasm');
+
+        if (wasmUrl) {
+            setStatus(`Loading ${wasmUrl}...`);
+            fetch(wasmUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch ${wasmUrl}: ${response.status}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(d => loadWasm(wasmUrl, d))
+                .catch(error => {
+                    setStatus(`Error loading ${wasmUrl}: ${error.message}`, 'error');
+                });
+        } else {
+            fetch("./examples/miku.wasm")
+                .then(response => response.arrayBuffer())
+                .then(d => loadWasm("examples/miku.wasm", d))
+                .catch(error => {
+                    setStatus(`Error loading miku.wasm: ${error.message}`, 'error');
+                });
+        }
+
+        // Initialize with black canvas
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, 512, 512);
+    </script>
+
+    <!-- This script block just handles the background. There's no exploits to be found here. -->
+    <script integrity="sha256-M4AVE+qW71QsqG4/DLzNYqY0XgcX37HdrCHVHpZri54=">
+        const BackgroundCanvasResources = {
+            canvas: null,
+            iconWallCanvas: null,
+            offscreenCanvas: null
+        };
+
+        const rad50 = 0.872665;
+        const rad40 = Math.PI / 2 - rad50;
+        const scale = 0.5;
+
+        function buildIconWallData(w, h, iconWall) {
+            const offscreenCanvas = document.createElement("canvas");
+            const offscreenCtx = offscreenCanvas.getContext("2d");
+
+            const a1 = w * Math.cos(rad40),
+                a2 = h * Math.cos(rad50),
+                b1 = h * Math.cos(rad40),
+                b2 = w * Math.cos(rad50);
+
+            const width = (b1 + b2) / scale;
+            const height = (a1 + a2 + 580) / scale;
+
+            offscreenCanvas.width = width;
+            offscreenCanvas.height = height;
+
+            const pattern = offscreenCtx.createPattern(iconWall, "repeat");
+            offscreenCtx.fillStyle = pattern;
+            offscreenCtx.fillRect(0, 0, width, height);
+            BackgroundCanvasResources.offscreenCanvas = offscreenCanvas;
+        }
+
+        function drawPatternScale(ctx, offscreenCanvas, startx, starty, width, height) {
+            ctx.save();
+            ctx.scale(scale, scale);
+            ctx.drawImage(offscreenCanvas, startx / scale, starty / scale, width / scale, height / scale);
+            ctx.restore();
+        }
+
+        function render(timer) {
+            timer = (timer / 30) % 580;
+            const { canvas, offscreenCanvas } = BackgroundCanvasResources;
+            if (canvas && offscreenCanvas) {
+                const ctx = canvas.getContext("2d");
+                ctx.save();
+                const w = canvas.width,
+                    h = canvas.height;
+                ctx.clearRect(0, 0, w, h);
+                ctx.save();
+                ctx.rotate(rad50);
+                const a1 = w * Math.cos(rad40),
+                    a2 = h * Math.cos(rad50),
+                    b1 = h * Math.cos(rad40),
+                    b2 = w * Math.cos(rad50);
+                ctx.translate(0, -timer);
+                drawPatternScale(ctx, offscreenCanvas, 0, -a1, b1 + b2, a1 + a2 + 580);
+                ctx.restore();
+            }
+        }
+
+        function frame(timer) {
+            render(timer);
+            return window.requestAnimationFrame(frame);
+        }
+
+        function IconWallCanvasInit() {
+            var canvas = document.getElementById("icon-wall-canvas");
+            if (!canvas) {
+                console.error("Canvas element not found");
+                return;
+            }
+
+            const iconWall = new Image();
+            iconWall.crossOrigin = "anonymous";
+            iconWall.onload = () => {
+                buildIconWallData(canvas.width, canvas.height, iconWall);
+            };
+            iconWall.src = "https://files.catbox.moe/6ti1xo.svg";
+
+            BackgroundCanvasResources.canvas = canvas;
+
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            window.addEventListener("resize", () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                buildIconWallData(canvas.width, canvas.height, iconWall);
+            });
+
+            window.requestAnimationFrame(frame);
+        }
+
+        window.addEventListener('load', IconWallCanvasInit);
+    </script>
+</body>
+
+</html>

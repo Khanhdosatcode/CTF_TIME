@@ -1,0 +1,21 @@
+<html>
+
+<head>
+	<meta http-equiv="Content-Security-Policy"
+		content="default-src 'none'; script-src 'self' https://code.jquery.com/jquery-3.7.1.js; connect-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com;">
+	<link rel="stylesheet" href="/style.css">
+	<script src="https://code.jquery.com/jquery-3.7.1.js"
+		integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous">
+	</script>
+	<script src="/view.js"></script>
+</head>
+
+<body>
+	<script defer src="/api/view/<%= note %>?callback=showNote"></script>
+	<div id="noteElement">
+		<h1 id="noteTitle"></h1>
+		<p id="noteContent"></p>
+	</div>
+</body>
+
+</html>

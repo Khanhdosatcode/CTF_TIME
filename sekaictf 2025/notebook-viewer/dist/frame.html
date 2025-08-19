@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<p id="note"></p>
+
+<head>
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, "Courier New", monospace;
+            font-size: 16px;
+            line-height: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+        let uri = new URL(location.href);
+        const note = uri.searchParams.get("note");
+        const txt = document.querySelector('#note');
+        if (note)
+            txt.innerHTML = note;
+        else
+            txt.innerHTML = String.fromCharCode(uri.host.split('-')[2].split('.')[0]);        
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      font-family: sans-serif;
+    }
+
+    body {
+      padding: 3rem 5rem;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin: 0;
+    }
+
+    .error {
+      color: red !important;
+      margin: 0.5rem 0;
+    }
+
+    hr {
+      margin: 1rem 0;
+    }
+
+    button[type="submit"].link {
+      background: none;
+      border: none;
+      padding: 0;
+      color: red;
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 1em;
+    }
+
+    .inline-block {
+      display: inline-block;
+    }
+
+    input:not([type="submit"]),
+    textarea {
+      width: 50vw;
+      border-width: 1px;
+      padding: 0.5rem 1rem;
+      margin: 0.5rem 0rem;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+
+    input,
+    textarea {
+      display: block;
+    }
+
+    input[type="submit"],
+    button {
+      padding: 0.5rem 1rem;
+      margin: 0.5em 0rem;
+      background-color: #ff4c4c;
+      color: #fff;
+      border: 1px solid #ff4c4c;
+      transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+      cursor: pointer;
+    }
+
+    input[type="submit"]:hover,
+    button:hover {
+      background-color: #c42c2c;
+      border-color: #c42c2c;
+    }
+
+    input[type="submit"]:active,
+    button:active {
+      background-color: #b82a2a;
+      border-color: #ad2727;
+    }
+  </style>
+  <title>rednote 🔥</title>
+  <script nonce="{{ nonce }}">
+    const RED_CSS_COLORS = [
+      "Crimson",
+      "DarkRed",
+      "DeepPink",
+      "FireBrick",
+      "Fuchsia",
+      "IndianRed",
+      "LightCoral",
+      "LightPink",
+      "Magenta",
+      "Maroon",
+      "MediumVioletRed",
+      "OrangeRed",
+      "PaleVioletRed",
+      "Red",
+      "RosyBrown",
+      "Salmon",
+      "Tomato"
+    ];
+    const TAGS = ["h1", "h2", "h3", "h4", "h5", "h6", "b", "br", "p", "strong", "ol", "ul", "li", "a", "style", "span"];
+    window.addEventListener("load", () => {
+      for (const t of TAGS) {
+        const els = document.querySelectorAll(t);
+        for (const el of els) {
+          el.style.color = RED_CSS_COLORS[Math.floor(Math.random() * RED_CSS_COLORS.length)];
+        }
+      }
+    });
+  </script>
+  <script src="/purify.min.js" nonce="{{nonce}}"></script>
+</head>
+<body>
+  <h1>rednote 🔥</h1>
+  {{#if error}}
+  <h4 class="error">{{ error }}</h4>
+  {{/if}}
+  {{#if message}}
+  <h4 class="message">{{ message }}</h4>
+  {{/if}}
+  <hr />
+  {{{ body }}}
+</body>
+</html>

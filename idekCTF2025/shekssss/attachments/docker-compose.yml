@@ -1,0 +1,26 @@
+version: '3.8'
+services:
+  php:
+    build: ./php-service
+    volumes:
+      - ./php-service:/var/www/html
+    networks:
+      - backend
+
+  node:
+    build: ./node-service
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./node-service/database.sqlite:/usr/src/app/database.sqlite
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=aaaa
+      - ADMIN_PASSWORD=admin
+    networks:
+      - backend
+      - internal
+
+networks:
+  internal:
+  backend:

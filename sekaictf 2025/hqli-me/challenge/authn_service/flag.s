@@ -1,0 +1,18 @@
+.global _start
+.text
+    _start:
+        /* write(STDOUT_FILENO, flag, flag_len); */
+        xor %rax,%rax
+        inc %al
+        mov %rax,%rdi
+        mov $flag,%rsi
+        mov $flag_len,%rdx
+        syscall
+
+        /* exit(0); */
+        mov $0x3c,%al
+        xor %rdi,%rdi
+        syscall
+
+    flag: .ascii "SEKAI{hql1nj3ct10n_unh4rm0n1zed}\n"
+    .set flag_len, .-flag

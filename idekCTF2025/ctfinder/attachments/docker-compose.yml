@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+  main:
+    build: ./web
+    ports:
+      - "1337:1337"
+    volumes:
+      - ./web:/app
+      - ./data:/app/data
+    environment:
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=TBD
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+    networks:
+      - ctfinder-network
+    depends_on:
+      - redis
+      - bot
+      - mcp-server
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    networks:
+      - ctfinder-network
+    command: redis-server --appendonly yes
+
+  bot:
+    build: ./bot
+    volumes:
+      - ./bot:/app
+      - /app/node_modules
+    environment:
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=TBD
+      - REPORT_KEY=TBD
+    networks:
+      - ctfinder-network
+
+  mcp-server:
+    build: ./mcp-server
+    volumes:
+      - ./mcp-server:/app
+    environment:
+      - PYTHONPATH=/app
+    networks:
+      - ctfinder-network
+
+networks:
+  ctfinder-network:
+    driver: bridge
+
+volumes:
+  data:
+  redis_data:

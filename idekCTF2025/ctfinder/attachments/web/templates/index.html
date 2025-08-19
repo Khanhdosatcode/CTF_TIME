@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTFinder AI Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script nonce="{{ g.csp_nonce }}">
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'claude-orange': '#FF6B35',
+                        'claude-bg': '#F7F7F8',
+                        'claude-dark': '#2F2F2F'
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            space-x: 2px;
+        }
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background-color: #9CA3AF;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+            margin-right: 4px;
+        }
+        .typing-indicator span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+        @keyframes typing {
+            0%, 80%, 100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-claude-bg text-gray-900 font-sans">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <h1 class="text-xl font-semibold text-claude-dark">CTFinder</h1>
+            <span class="text-sm text-gray-500">AI Chat Assistant</span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <button id="apiKeyBtn" class="bg-claude-orange text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600 transition-colors">
+                <i class="fas fa-key mr-2"></i>API Key
+            </button>
+            <div class="relative">
+                <button id="userMenuBtn" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900">
+                    <i class="fas fa-user-circle text-2xl"></i>
+                    <span id="username" class="text-sm"></span>
+                    <i class="fas fa-chevron-down text-xs"></i>
+                </button>
+                <div id="userMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border hidden z-50">
+                    <button id="logoutBtn" class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex" style="height: calc(100vh - 64px);">
+        <!-- Sidebar -->
+        <div class="w-80 bg-white border-r border-gray-200 flex flex-col">
+            <!-- New Chat Button -->
+            <div class="p-4">
+                <button id="newChatBtn" class="w-full bg-claude-orange text-white py-3 px-4 rounded-lg hover:bg-orange-600 transition-colors flex items-center justify-center">
+                    <i class="fas fa-plus mr-2"></i>New Chat
+                </button>
+            </div>
+            
+            <!-- Sessions List -->
+            <div class="flex-1 overflow-y-auto">
+                <div class="px-4 pb-4">
+                    <h3 class="text-sm font-medium text-gray-500 mb-3">Chat History</h3>
+                    <div id="sessionsList" class="space-y-2">
+                        <!-- Sessions will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="flex-1 flex flex-col">
+            <!-- Chat Messages -->
+            <div id="chatContainer" class="flex-1 overflow-y-auto p-6">
+                <div id="welcomeMessage" class="text-center py-20">
+                    <div class="max-w-md mx-auto">
+                        <div class="w-16 h-16 bg-claude-orange rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-robot text-white text-2xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-2">Chat with CTFinder AI</h2>
+                        <p class="text-gray-600">Enter a message to create a new chat and start a conversation.</p>
+                    </div>
+                </div>
+                <div id="messagesContainer" class="space-y-6 max-w-4xl mx-auto hidden">
+                    <!-- Messages area is hidden on index page -->
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="border-t border-gray-200 p-4">
+                <div class="max-w-4xl mx-auto">
+                    <div class="flex space-x-4">
+                        <div class="flex-1 relative">
+                            <textarea 
+                                id="messageInput" 
+                                placeholder="Enter your message..."
+                                class="w-full p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-claude-orange focus:border-transparent"
+                                rows="1"
+                                maxlength="4000"
+                            ></textarea>
+                            <div class="absolute bottom-2 right-2 text-xs text-gray-400">
+                                <span id="charCount">0</span>/4000
+                            </div>
+                        </div>
+                        <button 
+                            id="sendBtn" 
+                            class="bg-claude-orange text-white px-6 py-4 rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled
+                        >
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div id="apiKeyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 class="text-lg font-semibold mb-4">Claude API Key Setup</h3>
+            <p class="text-gray-600 mb-4 text-sm">Enter your Claude API key to use the API.</p>
+            <input 
+                type="password" 
+                id="apiKeyInput" 
+                placeholder="sk-ant-..." 
+                class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-claude-orange focus:border-transparent mb-4"
+            >
+            <div class="flex space-x-3">
+                <button id="saveApiKeyBtn" class="flex-1 bg-claude-orange text-white py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors">
+                    Save
+                </button>
+                <button id="cancelApiKeyBtn" class="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" class="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 hidden">
+        <div class="flex items-center space-x-3">
+            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-claude-orange"></div>
+            <span class="text-sm text-gray-600">AI is responding...</span>
+        </div>
+    </div>
+
+    <script nonce="{{ g.csp_nonce }}">
+        function escapeHTML(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        let currentSessionId = null;
+        let eventSource = null;
+        let isStreaming = false;
+        let isSending = false;
+        let isCreatingSession = false;
+
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const sessionsList = document.getElementById('sessionsList');
+        const newChatBtn = document.getElementById('newChatBtn');
+        const charCount = document.getElementById('charCount');
+        const userMenuBtn = document.getElementById('userMenuBtn');
+        const userMenu = document.getElementById('userMenu');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const apiKeyBtn = document.getElementById('apiKeyBtn');
+        const apiKeyModal = document.getElementById('apiKeyModal');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+        const cancelApiKeyBtn = document.getElementById('cancelApiKeyBtn');
+        const usernameElement = document.getElementById('username');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            await checkAuth();
+            loadSessions();
+            setupEventListeners();
+        });
+
+        function cleanupEventSource() {
+            if (eventSource) {
+                console.log('Cleaning up EventSource connection');
+                eventSource.close();
+                eventSource = null;
+            }
+        }
+
+        window.addEventListener('beforeunload', cleanupEventSource);
+        window.addEventListener('pagehide', cleanupEventSource);
+        
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && eventSource) {
+                console.log('Page hidden, cleaning up EventSource');
+                cleanupEventSource();
+            }
+        });
+
+        window.addEventListener('popstate', cleanupEventSource);
+
+        async function checkAuth() {
+            try {
+                const response = await fetch('/sessions/', {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    usernameElement.textContent = data.user.username;
+                } else if (response.status === 401) {
+                    window.location.href = '/auth/login';
+                } else {
+                    console.error('Auth check failed:', response.status);
+                    window.location.href = '/auth/login';
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+                window.location.href = '/auth/login';
+            }
+        }
+
+        function setupEventListeners() {
+            messageInput.addEventListener('input', function() {
+                const length = this.value.length;
+                charCount.textContent = length;
+                sendBtn.disabled = length === 0 || isStreaming || isSending;
+                
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+            });
+
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            sendBtn.addEventListener('click', sendMessage);
+
+            newChatBtn.addEventListener('click', createNewSession);
+
+            userMenuBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                userMenu.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', function() {
+                userMenu.classList.add('hidden');
+            });
+
+            logoutBtn.addEventListener('click', logout);
+
+            apiKeyBtn.addEventListener('click', function() {
+                clearApiKeyModal();
+                apiKeyModal.classList.remove('hidden');
+                apiKeyInput.focus();
+            });
+
+            cancelApiKeyBtn.addEventListener('click', function() {
+                clearApiKeyModal();
+                apiKeyModal.classList.add('hidden');
+            });
+
+            saveApiKeyBtn.addEventListener('click', saveApiKey);
+
+            apiKeyModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    clearApiKeyModal();
+                    this.classList.add('hidden');
+                }
+            });
+        }
+
+        async function loadSessions() {
+            try {
+                const response = await fetch('/sessions/', {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    displaySessions(data.sessions);
+                }
+            } catch (error) {
+                console.error('Failed to load sessions:', error);
+            }
+        }
+
+        function displaySessions(sessions) {
+            sessionsList.innerHTML = '';
+            
+            sessions.forEach(session => {
+                const sessionElement = document.createElement('div');
+                sessionElement.className = `p-3 rounded-lg cursor-pointer border transition-colors hover:bg-gray-50 ${
+                    currentSessionId === session.id ? 'bg-claude-orange text-white border-claude-orange' : 'bg-white border-gray-200'
+                }`;
+
+                sessionElement.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium truncate">${escapeHTML(session.title)}</span>
+                        <button class="delete-session opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700" data-session-id="${session.id}">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                `;
+                
+                sessionElement.addEventListener('click', () => {
+                    window.location.href = `/sessions/${session.id}`;
+                });
+                sessionsList.appendChild(sessionElement);
+            });
+        }
+
+        async function createNewSession() {
+            if (isCreatingSession) return;
+            isCreatingSession = true;
+            
+            try {
+                const response = await fetch('/sessions/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentSessionId = data.session_id;
+                } else {
+                    const errorResult = await handleApiError(response, 'Failed to create new chat.');
+                    if (!errorResult.handled) {
+                        alert(errorResult.message);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to create session:', error);
+                alert('Failed to create new chat.');
+            } finally {
+                isCreatingSession = false;
+            }
+        }
+
+        async function sendMessage() {
+            if (isSending) return;
+            isSending = true;
+            
+            if (!currentSessionId) {
+                await createNewSession();
+            }
+            
+            const content = messageInput.value.trim();
+            
+            if (!content) {
+                isSending = false;
+                return;
+            }
+            
+            messageInput.value = '';
+            charCount.textContent = '0';
+            sendBtn.disabled = true;
+
+            try {
+                const response = await fetch(`/sessions/${currentSessionId}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ content })
+                });
+
+                if (response.ok) {
+                    window.location.href = `/sessions/${currentSessionId}`;
+                } else {
+                    const errorResult = await handleApiError(response, 'Failed to send message.');
+                    if (!errorResult.handled) {
+                        alert(errorResult.message);
+                    }
+                    isSending = false;
+                    sendBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Failed to send message:', error);
+                alert('Failed to send message.');
+                isSending = false;
+                sendBtn.disabled = false;
+            }
+        }
+
+        async function handleApiError(response, defaultMessage = 'An error occurred while processing the request.') {
+            if (response.status === 401) {
+                try {
+                    const errorData = await response.json();
+                    if (errorData.error && errorData.error.includes('token required')) {
+                        apiKeyModal.classList.remove('hidden');
+                        return { handled: true, message: 'Claude API key is required. Please enter your API key.' };
+                    } else if (errorData.error && errorData.error.includes('login required')) {
+                        window.location.href = '/auth/login';
+                        return { handled: true };
+                    }
+                } catch (e) {
+                    window.location.href = '/auth/login';
+                    return { handled: true };
+                }
+            }
+            
+            try {
+                const errorData = await response.json();
+                return { handled: false, message: errorData.error || defaultMessage };
+            } catch (e) {
+                return { handled: false, message: defaultMessage };
+            }
+        }
+
+        async function logout() {
+            try {
+                const response = await fetch('/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                });
+
+                if (response.ok) {
+                    window.location.href = '/auth/login';
+                }
+            } catch (error) {
+                console.error('Logout failed:', error);
+                window.location.href = '/auth/login';
+            }
+        }
+
+        async function saveApiKey() {
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                showApiKeyError('Please enter your API key.');
+                return;
+            }
+
+            saveApiKeyBtn.disabled = true;
+            saveApiKeyBtn.textContent = 'Saving...';
+
+            try {
+                const response = await fetch('/tokens/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ token: apiKey })
+                });
+
+                if (response.ok) {
+                    apiKeyModal.classList.add('hidden');
+                    apiKeyInput.value = '';
+                    
+                    const successMsg = document.createElement('div');
+                    successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+                    successMsg.innerHTML = '<i class="fas fa-check mr-2"></i>API key saved successfully!';
+                    document.body.appendChild(successMsg);
+                    
+                    setTimeout(() => {
+                        successMsg.remove();
+                    }, 3000);
+                } else {
+                    const errorResult = await handleApiError(response, 'Failed to save API key.');
+                    if (!errorResult.handled) {
+                        showApiKeyError(errorResult.message);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to save API key:', error);
+                showApiKeyError('Network error occurred. Please try again.');
+            } finally {
+                saveApiKeyBtn.disabled = false;
+                saveApiKeyBtn.textContent = 'Save';
+            }
+        }
+
+        function showApiKeyError(message) {
+            const existingError = document.querySelector('#apiKeyError');
+            if (existingError) {
+                existingError.remove();
+            }
+
+            const errorDiv = document.createElement('div');
+            errorDiv.id = 'apiKeyError';
+            errorDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2';
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i>${message}`;
+            
+            apiKeyInput.parentNode.insertBefore(errorDiv, apiKeyInput.nextSibling);
+        }
+
+        function clearApiKeyModal() {
+            apiKeyInput.value = '';
+            
+            const existingError = document.querySelector('#apiKeyError');
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            saveApiKeyBtn.disabled = false;
+            saveApiKeyBtn.textContent = 'Save';
+        }
+    </script>
+</body>
+</html> 

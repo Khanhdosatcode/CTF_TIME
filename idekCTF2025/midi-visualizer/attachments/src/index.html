@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIDI Visualizer</title>
+    
+    <!-- Web components polyfill -->
+    <script src="https://unpkg.com/@webcomponents/webcomponentsjs@^2.0.0/webcomponents-loader.js"></script>
+    
+    <!-- Load magenta.js -->
+    <script src="https://unpkg.com/@magenta/music@1.1.9/dist/magentamusic.js"></script>
+    
+    <!-- Load the web component -->
+    <script src="/static/js/midi-visualizer.js"></script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+            font-weight: 300;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .upload-section {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 2px dashed #cbd5e0;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-section:hover {
+            border-color: #667eea;
+            background: #f1f5f9;
+        }
+        
+        .upload-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            align-items: end;
+        }
+        
+        .form-group {
+            flex: 1;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        
+        input[type="text"], input[type="file"], input[type="number"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        input[type="text"]:focus, input[type="file"]:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            min-width: 120px;
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .upload-btn:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .demo-section {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .files-section {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .files-list {
+            display: grid;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .file-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .file-item.selected {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .file-name {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .file-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .select-btn, .delete-btn, .share-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 8px;
+        }
+        
+        .select-btn {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .select-btn:hover {
+            background: #38a169;
+        }
+        
+        .delete-btn {
+            background: #f56565;
+            color: white;
+        }
+        
+        .delete-btn:hover {
+            background: #e53e3e;
+        }
+        
+        .share-btn {
+            background: #4299e1;
+            color: white;
+        }
+        
+        .share-btn:hover {
+            background: #3182ce;
+        }
+        
+        .player-section {
+            background: #2d3748;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .player-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            min-width: 100px;
+        }
+        
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        
+        .control-btn:disabled {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .current-file {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #a0aec0;
+        }
+        
+        .visualizer-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        midi-visualizer {
+            width: 100%;
+            border-radius: 10px;
+        }
+        
+        .status-message {
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: 600;
+        }
+        
+        .status-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        
+        .status-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #feb2b2;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #a0aec0;
+            font-style: italic;
+            padding: 40px;
+        }
+
+        .shared-mode {
+            background: #e6fffa;
+            border: 2px solid #4fd1c7;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .shared-mode h2 {
+            color: #234e52;
+            margin-top: 0;
+        }
+
+        .shared-file-info {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .back-link {
+            background: #4299e1;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        .back-link:hover {
+            background: #3182ce;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .modal h3 {
+            margin-top: 0;
+            color: #4a5568;
+            text-align: center;
+        }
+
+        .share-url {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 14px;
+            word-break: break-all;
+            margin: 15px 0;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .copy-btn {
+            background: #48bb78;
+            color: white;
+        }
+
+        .copy-btn:hover {
+            background: #38a169;
+        }
+
+        .close-btn {
+            background: #cbd5e0;
+            color: #4a5568;
+        }
+
+        .close-btn:hover {
+            background: #a0aec0;
+        }
+        
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+            }
+            
+            .file-item {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .player-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .file-actions {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="pageTitle">🎵 MIDI Visualizer</h1>
+        
+        <!-- Shared mode indicator -->
+        <div id="sharedMode" class="shared-mode" style="display: none;">
+            <h2>🔗 Shared MIDI File</h2>
+            <div class="shared-file-info" id="sharedFileInfo"></div>
+            <a href="/" class="back-link">← Back to MIDI Visualizer</a>
+        </div>
+        
+        <!-- Upload Section -->
+        <div class="upload-section" id="uploadSection">
+            <h2>📁 Upload MIDI File</h2>
+            <form class="upload-form" id="uploadForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fileName">Display Name:</label>
+                        <input type="text" id="fileName" placeholder="Enter a name for your MIDI file" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="tempoInput">Tempo (BPM):</label>
+                        <input type="number" id="tempoInput" placeholder="120" min="60" max="200" value="120">
+                    </div>
+                    <div class="form-group">
+                        <label for="fileInput">MIDI File:</label>
+                        <input type="file" id="fileInput" accept=".mid,.midi" required>
+                    </div>
+                    <button type="submit" class="upload-btn" id="uploadBtn">Upload</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="demo-section" id="demoSection">
+            <h2>🎹 Demo MIDIs</h2>
+            <p>demo songs mainly by luckylootcrate</p>
+            <p>the soundfont piano's register is very small :(</p>
+            <div class="files-list">
+                <div class="file-item">
+                    <div>
+                        <div class="file-name">sample 1</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 4px;">Tempo: 160 BPM</div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="select-btn" onclick="app.selectDemoFile(0)">
+                            Select
+                        </button>
+                    </div>
+                </div>
+                <div class="file-item">
+                    <div>
+                        <div class="file-name">sample 2</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 4px;">Tempo: 190 BPM</div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="select-btn" onclick="app.selectDemoFile(1)">
+                            Select
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Files Section -->
+        <div class="files-section" id="filesSection">
+            <h2>🎼 Your MIDI Files</h2>
+            <div class="files-list" id="filesList">
+                <div class="empty-state">No MIDI files uploaded yet. Upload your first file above!</div>
+            </div>
+        </div>
+        
+        <!-- Player Section -->
+        <div class="player-section">
+            <div class="current-file" id="currentFile">No file selected</div>
+            <div class="player-controls">
+                <button class="control-btn" id="playBtn" disabled>▶️ Play</button>
+                <button class="control-btn" id="pauseBtn" disabled>⏸️ Pause</button>
+                <button class="control-btn" id="stopBtn" disabled>⏹️ Stop</button>
+            </div>
+        </div>
+        
+        <!-- Visualizer Section -->
+        <div class="visualizer-container">
+            <midi-visualizer id="visualizer"></midi-visualizer>
+        </div>
+        
+        <div id="statusMessage"></div>
+    </div>
+
+    <!-- Share Modal -->
+    <div id="shareModal" class="modal">
+        <div class="modal-content">
+            <h3>🔗 Share Your MIDI</h3>
+            <p>Copy this link to share your MIDI file with others:</p>
+            <div class="share-url" id="shareUrl"></div>
+            <div class="modal-buttons">
+                <button class="copy-btn" id="copyBtn">📋 Copy Link</button>
+                <button class="close-btn" id="closeModal">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const demoFiles = [
+            {
+                id: 0,
+                displayName: "sample 1",
+                tempo: 160,
+                serverFileName: "sample1.mid"
+            },
+            {
+                id: 1,
+                displayName: "sample 2",
+                tempo: 190,
+                serverFileName: "sample2.mid"
+            }
+        ];
+
+        class MIDIVisualizerApp {
+            constructor() {
+                this.files = this.loadFiles();
+                this.currentFile = null;
+                this.visualizer = null;
+                this.isPlaying = false;
+                this.isPaused = false;
+                this.originalTempo = 120;
+                this.isSharedMode = false;
+                
+                this.initializeElements();
+                this.setupEventListeners();
+                this.checkForSharedFile();
+                
+                if (!this.isSharedMode) {
+                    this.renderFilesList();
+                }
+                
+                this.setupVisualizer();
+            }
+            
+            initializeElements() {
+                this.uploadForm = document.getElementById('uploadForm');
+                this.fileInput = document.getElementById('fileInput');
+                this.fileName = document.getElementById('fileName');
+                this.tempoInput = document.getElementById('tempoInput');
+                this.uploadBtn = document.getElementById('uploadBtn');
+                this.filesList = document.getElementById('filesList');
+                this.currentFileDisplay = document.getElementById('currentFile');
+                this.playBtn = document.getElementById('playBtn');
+                this.pauseBtn = document.getElementById('pauseBtn');
+                this.stopBtn = document.getElementById('stopBtn');
+                this.statusMessage = document.getElementById('statusMessage');
+                this.visualizer = document.getElementById('visualizer');
+                this.copyBtn = document.getElementById('copyBtn');
+                this.closeModal = document.getElementById('closeModal');
+                this.uploadSection = document.getElementById('uploadSection');
+                this.filesSection = document.getElementById('filesSection');
+                this.sharedMode = document.getElementById('sharedMode');
+                this.sharedFileInfo = document.getElementById('sharedFileInfo');
+                this.pageTitle = document.getElementById('pageTitle');
+            }
+            
+            setupEventListeners() {
+                this.uploadForm.addEventListener('submit', (e) => this.handleUpload(e));
+                this.playBtn.addEventListener('click', () => this.play());
+                this.pauseBtn.addEventListener('click', () => this.pause());
+                this.stopBtn.addEventListener('click', () => this.stop());
+                
+                // Auto-fill display name based on file name
+                this.fileInput.addEventListener('change', (e) => {
+                    if (e.target.files[0] && !this.fileName.value) {
+                        const fileName = e.target.files[0].name;
+                        const nameWithoutExt = fileName.replace(/\.(mid|midi)$/i, '');
+                        this.fileName.value = nameWithoutExt;
+                    }
+                });
+            }
+            
+            checkForSharedFile() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const sharedData = urlParams.get('share');
+                
+                if (sharedData) {
+                    try {
+                        const fileData = JSON.parse(atob(sharedData));
+                        this.loadSharedFile(fileData);
+                    } catch (error) {
+                        console.error('Invalid shared file data:', error);
+                        this.showStatus('Invalid share link', 'error');
+                    }
+                }
+            }
+            
+            loadSharedFile(fileData) {
+                this.isSharedMode = true;
+                
+                // Hide upload and files sections
+                this.uploadSection.style.display = 'none';
+                this.filesSection.style.display = 'none';
+                
+                // Show shared mode indicator
+                this.sharedMode.style.display = 'block';
+                this.pageTitle.textContent = '🎵 Shared MIDI: ' + fileData.displayName;
+                
+                // Display shared file info
+                this.sharedFileInfo.innerHTML = `
+                    <strong>${fileData.displayName}</strong><br>
+                    Tempo: ${fileData.tempo || 120} BPM<br>
+                    <small>Shared on ${new Date(fileData.sharedAt).toLocaleDateString()}</small>
+                `;
+                
+                // Use the server filename to create the file URL
+                const fileUrl = `/uploads/${fileData.serverFileName}`;
+                
+                this.currentFile = {
+                    displayName: fileData.displayName,
+                    tempo: fileData.tempo || 120,
+                    serverFileName: fileData.serverFileName,
+                    isShared: true
+                };
+                
+                this.currentFileDisplay.textContent = `Shared: ${fileData.displayName} (${fileData.tempo || 120} BPM)`;
+                
+                // Load into visualizer
+                setTimeout(() => {
+                    this.visualizer.setAttribute('url', fileUrl);
+                    this.visualizer.setAttribute('tempo', fileData.tempo || 120);
+                    this.originalTempo = fileData.tempo || 120;
+                    this.updateControlButtons();
+                }, 1000);
+                
+                this.showStatus(`Loaded shared MIDI: "${fileData.displayName}"`, 'success');
+            }
+            
+            setupVisualizer() {
+                // Wait for the web component to be ready
+                setTimeout(() => {
+                    this.visualizer = document.getElementById('visualizer');
+                    if (this.visualizer) {
+                        // Listen for visualizer events
+                        this.visualizer.addEventListener('stopped', () => {
+                            this.isPlaying = false;
+                            this.isPaused = false;
+                            this.updateControlButtons();
+                        });
+                        
+                        this.visualizer.addEventListener('started', () => {
+                            this.isPlaying = true;
+                            this.isPaused = false;
+                            this.updateControlButtons();
+                        });
+                    }
+                }, 1000);
+            }
+            
+            loadFiles() {
+                const stored = window.localStorage.getItem('midiFiles');
+                return stored ? JSON.parse(stored) : [];
+            }
+            
+            saveFiles() {
+                window.localStorage.setItem('midiFiles', JSON.stringify(this.files));
+            }
+            
+            async handleUpload(e) {
+                e.preventDefault();
+                
+                const file = this.fileInput.files[0];
+                const displayName = this.fileName.value.trim();
+                const tempo = parseInt(this.tempoInput.value) || 120;
+                
+                if (!file || !displayName) {
+                    this.showStatus('Please select a file and enter a display name.', 'error');
+                    return;
+                }
+                
+                this.uploadBtn.disabled = true;
+                this.uploadBtn.textContent = 'Uploading...';
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    const response = await fetch('/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Upload failed');
+                    }
+                    
+                    const result = await response.json();
+                    
+                    // Read file data for sharing capability
+                    const fileData = await file.arrayBuffer();
+                    
+                    // Add to files list
+                    const fileEntry = {
+                        id: Date.now(),
+                        displayName: displayName,
+                        serverFileName: result.filename,
+                        tempo: tempo,
+                        uploadDate: new Date().toISOString()
+                    };
+                    
+                    this.files.push(fileEntry);
+                    this.saveFiles();
+                    this.renderFilesList();
+                    
+                    // Reset form
+                    this.uploadForm.reset();
+                    this.tempoInput.value = '120';
+                    
+                    this.showStatus(`Successfully uploaded "${displayName}" with tempo ${tempo} BPM!`, 'success');
+                    
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    this.showStatus('Upload failed. Please try again.', 'error');
+                } finally {
+                    this.uploadBtn.disabled = false;
+                    this.uploadBtn.textContent = 'Upload';
+                }
+            }
+            
+            renderFilesList() {
+                if (this.files.length === 0) {
+                    this.filesList.innerHTML = '<div class="empty-state">No MIDI files uploaded yet. Upload your first file above!</div>';
+                    return;
+                }
+                
+                this.filesList.innerHTML = this.files.map(file => `
+                    <div class="file-item ${this.currentFile?.id === file.id ? 'selected' : ''}" data-file-id="${file.id}">
+                        <div>
+                            <div class="file-name">${file.displayName}</div>
+                            <div style="font-size: 12px; color: #666; margin-top: 4px;">Tempo: ${file.tempo || 120} BPM</div>
+                        </div>
+                        <div class="file-actions">
+                            <button class="select-btn" onclick="app.selectFile(${file.id})">
+                                ${this.currentFile?.id === file.id ? '✓ Selected' : 'Select'}
+                            </button>
+                            <button class="share-btn" onclick="app.shareFile(${file.id})">🔗 Share</button>
+                            <button class="delete-btn" onclick="app.deleteFile(${file.id})">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            selectFile(fileId) {
+                const file = this.files.find(f => f.id === fileId);
+                if (!file) return;
+                
+                this.currentFile = file;
+                this.currentFileDisplay.textContent = `Selected: ${file.displayName} (${file.tempo || 120} BPM)`;
+                
+                // Load file into visualizer with tempo
+                const fileUrl = `/uploads/${file.serverFileName}`;
+                this.visualizer.setAttribute('url', fileUrl);
+                this.visualizer.setAttribute('tempo', file.tempo || 120);
+                this.originalTempo = file.tempo || 120;
+                
+                this.updateControlButtons();
+                this.renderFilesList();
+                
+                this.showStatus(`Loaded "${file.displayName}" - ready to play!`, 'success');
+            }
+
+            selectDemoFile(fileId) {
+                const file = demoFiles.find(f => f.id === fileId);
+                if (!file) return;
+                this.currentFile = file;
+                this.currentFileDisplay.textContent = `Selected: ${file.displayName} (${file.tempo || 120} BPM)`;
+                
+                // Load file into visualizer with tempo
+                const fileUrl = `/static/midi/${file.serverFileName}`;
+                this.visualizer.setAttribute('url', fileUrl);
+                this.visualizer.setAttribute('tempo', file.tempo || 120);
+                this.originalTempo = file.tempo || 120;
+                
+                this.updateControlButtons();
+                this.renderFilesList();
+                
+                this.showStatus(`Loaded "${file.displayName}" - ready to play!`, 'success');
+            }
+            
+            shareFile(fileId) {
+                const file = this.files.find(f => f.id === fileId);
+                if (!file) return;
+                
+                try {
+                    const shareData = {
+                        displayName: file.displayName,
+                        tempo: file.tempo || 120,
+                        serverFileName: file.serverFileName, // Include the server filename
+                        sharedAt: new Date().toISOString()
+                    };
+                    
+                    const encodedData = btoa(JSON.stringify(shareData));
+                    const shareUrl = `${window.location.origin}${window.location.pathname}?share=${encodedData}`;
+                    
+                    // Automatically copy to clipboard
+                    this.copyToClipboard(shareUrl, file.displayName);
+                    
+                } catch (error) {
+                    console.error('Share error:', error);
+                    this.showStatus('Failed to generate share link', 'error');
+                }
+            }
+            
+            async copyToClipboard(text, fileName) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    this.showStatus(`Share link for "${fileName}" copied to clipboard! 📋`, 'success');
+                } catch (error) {
+                    // Fallback for browsers that don't support clipboard API
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    textArea.style.position = 'fixed';
+                    textArea.style.opacity = '0';
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    
+                    this.showStatus(`Share link for "${fileName}" copied to clipboard! 📋`, 'success');
+                }
+            }
+            
+            showShareModal() {
+                this.shareModal.classList.add('show');
+            }
+            
+            hideShareModal() {
+                this.shareModal.classList.remove('show');
+            }
+            
+            async copyShareUrl() {
+                try {
+                    await navigator.clipboard.writeText(this.shareUrl.textContent);
+                    this.copyBtn.textContent = '✓ Copied!';
+                    setTimeout(() => {
+                        this.copyBtn.textContent = '📋 Copy Link';
+                    }, 2000);
+                } catch (error) {
+                    // Fallback for browsers that don't support clipboard API
+                    const textArea = document.createElement('textarea');
+                    textArea.value = this.shareUrl.textContent;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    
+                    this.copyBtn.textContent = '✓ Copied!';
+                    setTimeout(() => {
+                        this.copyBtn.textContent = '📋 Copy Link';
+                    }, 2000);
+                }
+            }
+            
+            deleteFile(fileId) {
+                if (confirm('Are you sure you want to delete this file?')) {
+                    this.files = this.files.filter(f => f.id !== fileId);
+                    this.saveFiles();
+                    
+                    if (this.currentFile?.id === fileId) {
+                        this.currentFile = null;
+                        this.currentFileDisplay.textContent = 'No file selected';
+                        this.visualizer.removeAttribute('url');
+                        this.updateControlButtons();
+                    }
+                    
+                    this.renderFilesList();
+                    this.showStatus('File deleted successfully.', 'success');
+                }
+            }
+            
+            play() {
+                if (!this.currentFile) {
+                    this.showStatus('Please select a file first.', 'error');
+                    return;
+                }
+                
+                if (this.isPaused) {
+                    // If currently paused, let the pause button handle resume
+                    return;
+                } else {
+                    // Start playing
+                    this.visualizer.start();
+                }
+                
+                this.isPlaying = true;
+                this.updateControlButtons();
+            }
+            
+            pause() {
+                if (!this.isPlaying) return;
+                
+                if (this.isPaused) {
+                    // Resume from pause by restoring tempo
+                    this.visualizer.tempo = this.originalTempo;
+                    this.isPaused = false;
+                } else {
+                    // Store original tempo and set to 0 to "pause"
+                    this.originalTempo = this.visualizer.tempo || this.currentFile.tempo || 120;
+                    this.visualizer.tempo = 0;
+                    this.isPaused = true;
+                }
+                
+                this.updateControlButtons();
+            }
+            
+            stop() {
+                this.visualizer.stop();
+                this.isPlaying = false;
+                this.isPaused = false;
+                this.updateControlButtons();
+            }
+            
+            updateControlButtons() {
+                const hasFile = !!this.currentFile;
+                
+                this.playBtn.disabled = !hasFile || (this.isPlaying && !this.isPaused);
+                this.pauseBtn.disabled = !hasFile || !this.isPlaying;
+                this.stopBtn.disabled = !hasFile || !this.isPlaying;
+                
+                // Update button text based on state
+                this.playBtn.textContent = '▶️ Play';
+                
+                if (this.isPaused) {
+                    this.pauseBtn.textContent = '▶️ Resume';
+                } else {
+                    this.pauseBtn.textContent = '⏸️ Pause';
+                }
+            }
+            
+            showStatus(message, type = 'success') {
+                this.statusMessage.innerHTML = `<div class="status-message status-${type}">${message}</div>`;
+                setTimeout(() => {
+                    this.statusMessage.innerHTML = '';
+                }, 5000);
+            }
+        }
+        
+        // Initialize the app when the page loads
+        let app;
+        document.addEventListener('DOMContentLoaded', () => {
+            // Wait a bit for web components to load
+            setTimeout(() => {
+                app = new MIDIVisualizerApp();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

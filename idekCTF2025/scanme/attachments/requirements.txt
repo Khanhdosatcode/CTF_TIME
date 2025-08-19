@@ -1,0 +1,4 @@
+Flask
+PyYAML
+python-dotenv
+gunicorn

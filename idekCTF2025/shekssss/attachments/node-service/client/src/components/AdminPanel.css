@@ -1,0 +1,118 @@
+.admin-panel-container {
+  max-width: 500px;
+  margin: 40px auto;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.admin-panel-container h2 {
+  margin-bottom: 24px;
+  color: #1f2937;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.admin-panel-form {
+  display: flex;
+  width: 100%;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.admin-url-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.admin-url-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.admin-fetch-button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.admin-fetch-button:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.admin-fetch-button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.admin-error {
+  color: #dc2626;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+}
+
+.admin-result {
+  width: 100%;
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+  font-size: 0.95rem;
+  color: #374151;
+  overflow-x: auto;
+}
+
+.admin-result pre {
+  margin: 0;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.admin-users-list {
+  width: 100%;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-user-item {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 1rem;
+  color: #374151;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-user-item a {
+  color: #3b82f6;
+  text-decoration: underline;
+  font-size: 0.95rem;
+}
+
+.admin-user-item a:hover {
+  color: #1d4ed8;
+} 

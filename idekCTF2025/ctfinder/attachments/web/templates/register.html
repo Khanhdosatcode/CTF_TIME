@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTFinder - Register</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script nonce="{{ g.csp_nonce }}">
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'claude-orange': '#FF6B35',
+                        'claude-bg': '#F7F7F8',
+                        'claude-dark': '#2F2F2F'
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-claude-bg to-white min-h-screen">
+    <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full space-y-8">
+            <!-- Header -->
+            <div class="text-center">
+                <div class="w-16 h-16 bg-claude-orange rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-robot text-white text-2xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-claude-dark">Create CTFinder Account</h2>
+                <p class="mt-2 text-gray-600">Start your CTF journey with AI assistant</p>
+            </div>
+
+            <!-- Register Form -->
+            <div class="bg-white rounded-lg shadow-lg p-8">
+                <form id="registerForm" class="space-y-6">
+                    <div>
+                        <label for="username" class="block text-sm font-medium text-gray-700 mb-2">
+                            Username
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-user text-gray-400"></i>
+                            </div>
+                            <input 
+                                id="username" 
+                                name="username" 
+                                type="text" 
+                                required 
+                                minlength="3"
+                                maxlength="20"
+                                pattern="[a-zA-Z0-9_]+"
+                                class="appearance-none relative block w-full px-10 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-claude-orange focus:border-transparent focus:z-10"
+                                placeholder="Username (3-20 characters, only letters, numbers, and underscores)"
+                            >
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">Only letters, numbers, and underscores are allowed.</p>
+                    </div>
+
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                            Password
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-lock text-gray-400"></i>
+                            </div>
+                            <input 
+                                id="password" 
+                                name="password" 
+                                type="password" 
+                                required 
+                                minlength="6"
+                                class="appearance-none relative block w-full px-10 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-claude-orange focus:border-transparent focus:z-10"
+                                placeholder="Password (minimum 6 characters)"
+                            >
+                            <button 
+                                type="button" 
+                                id="togglePassword"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                            >
+                                <i class="fas fa-eye text-gray-400 hover:text-gray-600" id="eyeIcon"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Password strength indicator -->
+                        <div class="mt-2">
+                            <div class="flex space-x-1">
+                                <div id="strength-1" class="h-1 flex-1 rounded bg-gray-200"></div>
+                                <div id="strength-2" class="h-1 flex-1 rounded bg-gray-200"></div>
+                                <div id="strength-3" class="h-1 flex-1 rounded bg-gray-200"></div>
+                                <div id="strength-4" class="h-1 flex-1 rounded bg-gray-200"></div>
+                            </div>
+                            <p id="passwordStrengthText" class="mt-1 text-xs text-gray-500">Password Strength</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-2">
+                            Confirm Password
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-lock text-gray-400"></i>
+                            </div>
+                            <input 
+                                id="confirmPassword" 
+                                name="confirmPassword" 
+                                type="password" 
+                                required 
+                                class="appearance-none relative block w-full px-10 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-claude-orange focus:border-transparent focus:z-10"
+                                placeholder="Confirm your password"
+                            >
+                            <div id="passwordMatch" class="absolute inset-y-0 right-0 pr-3 flex items-center hidden">
+                                <i class="fas fa-check text-green-500"></i>
+                            </div>
+                        </div>
+                        <p id="passwordMismatch" class="mt-1 text-xs text-red-500 hidden">Passwords do not match.</p>
+                    </div>
+
+                    <div>
+                        <button 
+                            type="submit" 
+                            id="registerBtn"
+                            class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-claude-orange hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-claude-orange transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled
+                        >
+                            <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                                <i class="fas fa-user-plus text-orange-300 group-hover:text-orange-200"></i>
+                            </span>
+                            <span id="registerBtnText">Create Account</span>
+                            <div id="registerSpinner" class="hidden animate-spin ml-2">
+                                <i class="fas fa-circle-notch"></i>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Error/Success Message -->
+                    <div id="errorMessage" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-circle mr-2"></i>
+                            <span id="errorText"></span>
+                        </div>
+                    </div>
+
+                    <div id="successMessage" class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                        <div class="flex items-center">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            <span id="successText"></span>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Login Link -->
+                <div class="mt-6 text-center">
+                    <p class="text-sm text-gray-600">
+                        Already have an account?
+                        <a href="/auth/login" class="font-medium text-claude-orange hover:text-orange-600 transition-colors">
+                            Login
+                        </a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Terms -->
+            <div class="text-center">
+                <p class="text-xs text-gray-500">
+                    By creating an account, you agree to CTFinder's
+                    <a href="#" class="text-claude-orange hover:text-orange-600">Service Terms</a> and
+                    <a href="#" class="text-claude-orange hover:text-orange-600">Privacy Policy</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script nonce="{{ g.csp_nonce }}">
+        const registerForm = document.getElementById('registerForm');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const registerBtn = document.getElementById('registerBtn');
+        const registerBtnText = document.getElementById('registerBtnText');
+        const registerSpinner = document.getElementById('registerSpinner');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const successMessage = document.getElementById('successMessage');
+        const successText = document.getElementById('successText');
+        const togglePassword = document.getElementById('togglePassword');
+        const eyeIcon = document.getElementById('eyeIcon');
+        const passwordMatch = document.getElementById('passwordMatch');
+        const passwordMismatch = document.getElementById('passwordMismatch');
+        const passwordStrengthText = document.getElementById('passwordStrengthText');
+
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            updateSubmitButton();
+            usernameInput.focus();
+        });
+
+        function setupEventListeners() {
+            registerForm.addEventListener('submit', handleRegister);
+
+            togglePassword.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                
+                eyeIcon.className = type === 'password' 
+                    ? 'fas fa-eye text-gray-400 hover:text-gray-600'
+                    : 'fas fa-eye-slash text-gray-400 hover:text-gray-600';
+            });
+
+            usernameInput.addEventListener('input', function() {
+                validateUsername();
+                updateSubmitButton();
+            });
+            passwordInput.addEventListener('input', function() {
+                checkPasswordStrength();
+                validatePasswords();
+                updateSubmitButton();
+            });
+            confirmPasswordInput.addEventListener('input', function() {
+                validatePasswords();
+                updateSubmitButton();
+            });
+
+            [usernameInput, passwordInput, confirmPasswordInput].forEach(input => {
+                input.addEventListener('input', function() {
+                    hideMessages();
+                });
+            });
+        }
+
+        function validateUsername() {
+            const username = usernameInput.value.trim();
+            const isValid = username.length >= 3 && username.length <= 20 && /^[a-zA-Z0-9_]+$/.test(username);
+            
+            if (username.length > 0 && !isValid) {
+                usernameInput.classList.add('border-red-300');
+                usernameInput.classList.remove('border-gray-300');
+            } else if (username.length >= 3 && isValid) {
+                usernameInput.classList.remove('border-red-300');
+                usernameInput.classList.add('border-green-300');
+            } else {
+                usernameInput.classList.remove('border-red-300', 'border-green-300');
+                usernameInput.classList.add('border-gray-300');
+            }
+            
+            return isValid;
+        }
+
+        function checkPasswordStrength() {
+            const password = passwordInput.value;
+            const strength = getPasswordStrength(password);
+            
+            for (let i = 1; i <= 4; i++) {
+                const indicator = document.getElementById(`strength-${i}`);
+                indicator.className = 'h-1 flex-1 rounded bg-gray-200';
+            }
+            
+            const colors = ['bg-red-400', 'bg-yellow-400', 'bg-blue-400', 'bg-green-400'];
+            const texts = ['Very Weak', 'Weak', 'Average', 'Strong'];
+            
+            if (strength > 0) {
+                for (let i = 1; i <= strength; i++) {
+                    const indicator = document.getElementById(`strength-${i}`);
+                    indicator.className = `h-1 flex-1 rounded ${colors[strength - 1]}`;
+                }
+                passwordStrengthText.textContent = `Password Strength: ${texts[strength - 1]}`;
+                passwordStrengthText.className = `mt-1 text-xs ${strength <= 2 ? 'text-red-500' : 'text-green-600'}`;
+            } else {
+                passwordStrengthText.textContent = 'Password Strength';
+                passwordStrengthText.className = 'mt-1 text-xs text-gray-500';
+            }
+        }
+
+        function getPasswordStrength(password) {
+            if (password.length < 6) return 0;
+            
+            let strength = 1;
+            if (password.length >= 8) strength++;
+            if (/[A-Z]/.test(password) && /[a-z]/.test(password)) strength++;
+            if (/[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password)) strength++;
+            
+            return Math.min(strength, 4);
+        }
+
+        function validatePasswords() {
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+            
+            if (confirmPassword) {
+                if (password === confirmPassword) {
+                    passwordMatch.classList.remove('hidden');
+                    passwordMismatch.classList.add('hidden');
+                    confirmPasswordInput.classList.remove('border-red-300');
+                    confirmPasswordInput.classList.add('border-green-300');
+                    return true;
+                } else {
+                    passwordMatch.classList.add('hidden');
+                    passwordMismatch.classList.remove('hidden');
+                    confirmPasswordInput.classList.add('border-red-300');
+                    confirmPasswordInput.classList.remove('border-green-300');
+                    return false;
+                }
+            } else {
+                passwordMatch.classList.add('hidden');
+                passwordMismatch.classList.add('hidden');
+                confirmPasswordInput.classList.remove('border-red-300', 'border-green-300');
+                confirmPasswordInput.classList.add('border-gray-300');
+                return false;
+            }
+        }
+
+        function updateSubmitButton() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+            
+            const isUsernameValid = username.length >= 3 && username.length <= 20 && /^[a-zA-Z0-9_]+$/.test(username);
+            const isPasswordValid = password.length >= 6;
+            const isConfirmPasswordValid = confirmPassword.length > 0 && password === confirmPassword;
+            
+            registerBtn.disabled = !(isUsernameValid && isPasswordValid && isConfirmPasswordValid);
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+
+            if (!validateUsername()) {
+                showError('Please enter a valid username.');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError('Password must be at least 6 characters long.');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showError('Passwords do not match.');
+                return;
+            }
+
+            setLoading(true);
+            hideMessages();
+
+            try {
+                const response = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccess('Account created successfully! Redirecting to login page...');
+                    setTimeout(() => {
+                        window.location.href = '/auth/login';
+                    }, 2000);
+                } else {
+                    showError(data.error || 'Registration failed.');
+                    setLoading(false);
+                }
+            } catch (error) {
+                console.error('Register error:', error);
+                showError('Network error occurred. Please try again.');
+                setLoading(false);
+            }
+        }
+
+        function setLoading(loading) {
+            registerBtn.disabled = loading;
+            if (loading) {
+                registerBtnText.textContent = 'Creating account...';
+                registerSpinner.classList.remove('hidden');
+            } else {
+                registerBtnText.textContent = 'Create Account';
+                registerSpinner.classList.add('hidden');
+                updateSubmitButton();
+            }
+        }
+
+        function showError(message) {
+            errorText.textContent = message;
+            errorMessage.classList.remove('hidden');
+            successMessage.classList.add('hidden');
+            
+            errorMessage.style.animation = 'shake 0.5s ease-in-out';
+            setTimeout(() => {
+                errorMessage.style.animation = '';
+            }, 500);
+        }
+
+        function showSuccess(message) {
+            successText.textContent = message;
+            successMessage.classList.remove('hidden');
+            errorMessage.classList.add('hidden');
+        }
+
+        function hideMessages() {
+            errorMessage.classList.add('hidden');
+            successMessage.classList.add('hidden');
+        }
+
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 20%, 40%, 60%, 80% { transform: translateX(0); }
+                10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html> 

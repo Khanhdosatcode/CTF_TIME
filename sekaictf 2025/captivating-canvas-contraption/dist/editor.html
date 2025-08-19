@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>CCC - Editor</title>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .toolbar {
+            height: 50px;
+            background: #333;
+            color: white;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        #container {
+            flex: 1;
+            width: 100%;
+        }
+
+        button {
+            background: #555;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+
+            &:hover {
+                background: #777;
+            }
+        }
+
+        select {
+            background: #555;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="toolbar">
+        <div>
+            Select Example:
+            <select id="example-select">
+                <option value="solid-color">Solid Color</option>
+                <option value="rainbow">Rainbow</option>
+            </select>
+        </div>
+
+        <button id="run-button">Compile</button>
+    </div>
+    <div id="container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/assemblyscript@0.28.4/dist/web.js"></script>
+    <script type="module">
+        import asc from "assemblyscript/asc";
+        require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs' } });
+
+        let editor;
+        require(['vs/editor/editor.main'], () => {
+            const container = document.getElementById('container');
+            monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+                noSemanticValidation: true,
+            });
+            editor = monaco.editor.create(container, { language: "typescript" });
+            window.addEventListener("resize", () => editor.layout({
+                width: container.offsetWidth,
+                height: container.offsetHeight
+            }));
+            updateExample();
+        });
+
+        document.getElementById("example-select").addEventListener("change", updateExample);
+
+        function updateExample() {
+            const example = document.getElementById('example-select').value;
+            selectExample(example);
+        }
+
+        function selectExample(example) {
+            const examples = {
+                "solid-color": `// The CCC viewer expects an exported function named 'renderPixel' that takes x, y, and dt as parameters and
+// returns a color in RGB format. You can write your payload in any language, as long as it compiles to WebAssembly
+// and doesn't use any imports.
+//
+// This example uses AsssemblyScript to render a solid color on the canvas.
+export function renderPixel(x: i32, y: i32, dt: f32): i32 {
+    return 0xAA00FF;
+}`,
+                "rainbow": `// The CCC viewer expects an exported function named 'renderPixel' that takes x, y, and dt as parameters and
+// returns a color in RGB format. You can write your payload in any language, as long as it compiles to WebAssembly
+// and doesn't use any imports.
+//
+// This example uses AsssemblyScript to render a moving rainbow gradient on the canvas.
+export function renderPixel(x: i32, y: i32, dt: f32): i32 {
+    const progress: f32 = f32(x) / 512.0;
+    
+    const timeOffset: f32 = dt * 0.5;
+    const hue: f32 = (progress + timeOffset) % 1.0;
+    
+    const h: f32 = hue * 6.0;
+    const c: f32 = 1.0; // Chroma (saturation * value)
+    const x_val: f32 = f32(c * (1.0 - Math.abs((h % 2.0) - 1.0)));
+    
+    let r: f32, g: f32, b: f32;
+    
+    if (h < 1.0) {
+        r = c; g = x_val; b = 0.0;
+    } else if (h < 2.0) {
+        r = x_val; g = c; b = 0.0;
+    } else if (h < 3.0) {
+        r = 0.0; g = c; b = x_val;
+    } else if (h < 4.0) {
+        r = 0.0; g = x_val; b = c;
+    } else if (h < 5.0) {
+        r = x_val; g = 0.0; b = c;
+    } else {
+        r = c; g = 0.0; b = x_val;
+    }
+    
+    const verticalFade: f32 = 1.0 - (f32(y) / 512.0) * 0.3; // Fade from top to bottom
+    r *= verticalFade;
+    g *= verticalFade;
+    b *= verticalFade;
+    
+    const red: i32 = i32(r * 255.0);
+    const green: i32 = i32(g * 255.0);
+    const blue: i32 = i32(b * 255.0);
+    
+    return (red << 16) | (green << 8) | blue;
+}`
+            };
+
+            editor.setValue(examples[example] || "");
+        }
+
+        async function compile() {
+            const code = editor.getValue();
+            const { error, stdout, stderr, stats } = await asc.main([
+                "myModule.ts",
+                "--outFile", "myModule.wasm",
+                "--optimize",
+            ], {
+                stdout: {
+                    write(message) {
+                        console.log(message);
+                    }
+                },
+                stderr: {
+                    write(message) {
+                        alert(message);
+                        console.error(message);
+                    }
+                },
+                readFile(filename, basedir) {
+                    if (filename === "myModule.ts") {
+                        return code;
+                    }
+                    if (filename === "asconfig.json") return "{}";
+                    throw new Error(`File not found: ${filename}`);
+                },
+                writeFile(filename, contents, baseDir) {
+                    if (filename === "myModule.wasm") {
+                        const blob = new Blob([contents], { type: 'application/wasm' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = 'myModule.wasm';
+                        link.textContent = 'Download myModule.wasm';
+                        link.click();
+                    } else {
+                        console.log(`File written: ${filename}`);
+                    }
+                },
+                listFiles() {
+                    return [];
+                }
+            });
+        }
+        document.getElementById("run-button").addEventListener("click", compile);
+    </script>
+</body>
+
+</html>

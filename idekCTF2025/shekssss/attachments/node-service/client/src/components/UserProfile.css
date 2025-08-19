@@ -1,0 +1,161 @@
+.user-profile-container {
+  max-width: 420px;
+  margin: 40px auto;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.user-profile-container h2 {
+  margin-bottom: 24px;
+  color: #1f2937;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.profile-photo-section {
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.profile-photo {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #3b82f6;
+  background: #f3f4f6;
+  margin-bottom: 8px;
+  transition: box-shadow 0.2s;
+}
+
+.profile-photo:hover {
+  box-shadow: 0 0 0 4px #dbeafe;
+}
+
+.profile-info-section {
+  width: 100%;
+}
+
+.profile-info-section > div {
+  margin-bottom: 12px;
+  color: #374151;
+  font-size: 1rem;
+}
+
+.edit-profile-button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: background 0.2s;
+}
+
+.edit-profile-button:hover {
+  background: #2563eb;
+}
+
+.profile-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.profile-edit-form .form-group label {
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.profile-edit-form .form-group input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.profile-edit-form .form-group input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.cancel-button {
+  background: #f3f4f6;
+  color: #374151;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cancel-button:hover {
+  background: #e5e7eb;
+}
+
+.save-button {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.save-button:hover {
+  background: #059669;
+}
+
+.profile-error {
+  color: #dc2626;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+}
+
+.profile-success {
+  color: #059669;
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 600px) {
+  .user-profile-container {
+    padding: 16px 4px;
+  }
+  .profile-photo {
+    width: 90px;
+    height: 90px;
+  }
+} 

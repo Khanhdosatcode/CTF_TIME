@@ -1,0 +1,15 @@
+services:
+  wordpress:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    deploy:
+      resources:
+        reservations:
+          cpus: '0.05'
+          memory: 128M
+        limits:
+          cpus: '0.25'  
+          memory: 256M 

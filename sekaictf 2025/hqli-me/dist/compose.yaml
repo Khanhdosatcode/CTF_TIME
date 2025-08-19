@@ -1,0 +1,36 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: db
+    network_mode: host
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  authn_service:
+    build:
+      context: ./authn_service
+    restart: unless-stopped
+    environment:
+      - PORT=8000
+    network_mode: host
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # This service will be exposed
+  order_service:
+    build:
+      context: ./order_service
+    restart: unless-stopped
+    environment:
+      - PORT=1337
+    network_mode: host
+    depends_on:
+      mysql:
+        condition: service_healthy
