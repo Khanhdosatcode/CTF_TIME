@@ -1,0 +1,9 @@
+Flask
+Jinja2
+Flask-WTF
+Flask-SQLAlchemy
+Flask-Login
+email-validator
+python-dotenv
+Werkzeug
+Pillow

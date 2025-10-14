@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="email-view">
+    <div class="email-header">
+        <h2>{{ email.subject }}</h2>
+        <div class="email-meta">
+            <span>From: {{ email.sender.username }}</span>
+            <span>To: {{ email.recipient.username }}</span>
+            <span>Date: {{ email.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+        </div>
+    </div>
+    <div class="email-body">
+        {{ email.body|safe }}
+    </div>
+    {% if email.attachment_path %}
+    <div class="email-attachment">
+        <h4>Attachment:</h4>
+        <a href="{{ url_for('static', filename=email.attachment_path) }}" download>
+            {{ email.attachment_path.split('/')[-1] }}
+        </a>
+    </div>
+    {% endif %}
+    <div class="email-actions">
+        <a href="{{ url_for('emails.compose') }}?reply_to={{ email.id }}" class="btn btn-primary">Reply</a>
+    </div>
+</div>
+{% endblock %}

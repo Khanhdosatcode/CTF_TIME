@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  challenge:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  chrome:
+    image: browserless/chrome:latest
+    environment:
+      - MAX_CONCURRENT_SESSIONS=2
+    ports:
+      - "3001:3000"
+    restart: unless-stopped

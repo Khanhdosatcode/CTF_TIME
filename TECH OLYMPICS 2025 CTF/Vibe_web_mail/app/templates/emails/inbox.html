@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="inbox">
+        <h2>Inbox</h2>
+        <div class="email-list">
+            {% for email in emails %}
+                <div class="email-item {% if not email.is_read %}unread{% endif %}">
+                    <a href="{{ url_for('emails.view_email', email_id=email.id) }}">
+                        <div class="email-header">
+                            <span class="sender">{{ email.sender.username }}</span>
+                            <span class="subject">{{ email.subject }}</span>
+                            <span class="time">{{ email.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+                        </div>
+                        <div class="email-preview">
+                            {{ email.body|truncate(100) }}
+                        </div>
+                    </a>
+                </div>
+            {% else %}
+                <p>No emails in your inbox.</p>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
