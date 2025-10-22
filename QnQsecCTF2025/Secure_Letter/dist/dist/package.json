@@ -1,0 +1,15 @@
+{
+  "name": "final-challenge",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "express": "^4.18.2",
+    "puppeteer": "^24.24.1",
+    "ws": "^8.14.2"
+  },
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "devDependencies": {}
+}

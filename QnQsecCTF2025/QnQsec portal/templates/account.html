@@ -1,0 +1,11 @@
+{% extends 'layout.html' %}
+{% block content %}
+  <p>Welcome, <strong>{{ user }}</strong>.</p>
+  {% if is_admin %}
+    <div class="notice">Admin access granted. Proceed to the admin renderer.</div>
+    <p><a class="btn-link" href="{{ url_for('admin.admin') }}">Open Admin Panel</a></p>
+  {% else %}
+    <p class="muted">You're a normal user.</p>
+  {% endif %}
+  <br><a href="{{ url_for('logout') }}">Logout</a>
+{% endblock %}

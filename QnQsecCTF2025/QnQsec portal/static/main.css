@@ -1,0 +1,96 @@
+
+:root {
+  --primary: #0d47a1;
+  --primary-600: #1565c0;
+  --text: #333;
+  --muted: #5f6c7b;
+  --bg-start: #f0f4f8;
+  --bg-end: #d9e2ec;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(to bottom right, var(--bg-start), var(--bg-end));
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+}
+.card {
+  width: 520px;
+  max-width: calc(100% - 32px);
+  margin: 72px auto;
+  background: #fff;
+  padding: 28px 32px;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.12);
+}
+h1 { text-align:center; margin: 0 0 18px; font-size: 1.6rem; color: var(--primary); }
+h2 { margin: 6px 0 10px; color: var(--primary); }
+.form label { display:block; margin-top: 12px; font-weight:600; }
+input, textarea {
+  width: 100%;
+  padding: 10px 12px;
+  margin-top: 6px;
+  border-radius: 8px;
+  border: 1px solid #c8d1da;
+  font-size: 0.95rem;
+  transition: border-color .2s, box-shadow .2s;
+  resize: vertical;
+}
+input:focus, textarea:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(13, 71, 161, 0.12);
+}
+button {
+  margin-top: 18px;
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background .2s, transform .02s;
+}
+button:hover { background: var(--primary-600); }
+button:active { transform: translateY(1px); }
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.muted { color: var(--muted); }
+.notice {
+  background: #e3f2fd;
+  border: 1px solid #90caf9;
+  color: var(--primary);
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+.flash {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.92rem;
+}
+.flash.message {
+  background: #e3f2fd;
+  border: 1px solid #90caf9;
+  color: var(--primary);
+}
+.flash.error {
+  background: #ffebee;
+  border: 1px solid #ef9a9a;
+  color: #c62828;
+}
+.btn-link {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+}
+.btn-link:hover { background: var(--primary-600); text-decoration: none; }

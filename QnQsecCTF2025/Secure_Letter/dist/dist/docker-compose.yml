@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - BOT_HOST=bot
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - app-network
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - FLAG=${FLAG:-FLAG{test_flag}}
+      - WEB_URL=http://web:3001
+      - COOKIE_DOMAIN=web
+    networks:
+      - app-network
+    depends_on:
+      - web
+
+networks:
+  app-network:
+    driver: bridge

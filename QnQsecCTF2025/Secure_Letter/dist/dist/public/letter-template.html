@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Letter Preview</title>
+    <style>
+        body {
+            font-family: 'Times New Roman', serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f9f9f9;
+        }
+        .letter-content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-height: 400px;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="letter-content">
+        <h1>📝 Letter</h1>
+        <div id="letterText">
+            {{letterContent}}
+        </div>
+    </div>
+
+    <script>
+        function loadAnalytics() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const parentName = urlParams.get('name');
+            if (parentName !== 'analytics') return; 
+
+
+            const defaultAnalyticsURL = location.origin + "analytics.js";
+            const candidate = window.cfg.analyticsURL ?? defaultAnalyticsURL;
+
+            try {
+                const url = new URL(candidate).toString();
+
+                const script = document.createElement('script');
+                
+                script.src = url;
+                script.async = true;  
+
+                document.body.appendChild(script);
+            } catch (err) {
+                // silent Error
+            }
+        }
+
+        const channel = new MessageChannel();
+        channel.port1.postMessage('loadAnalytics');
+        channel.port2.onmessage = (e) => {
+            if (e.data === 'loadAnalytics') {
+                loadAnalytics();
+            }
+        }
+    </script>
+</body>
+</html>

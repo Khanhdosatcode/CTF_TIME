@@ -1,0 +1,11 @@
+{% extends 'layout.html' %}
+{% block content %}
+  <h2>Admin Renderer</h2>
+  <p class="muted">This tool previews internal templates. Enter a template string below.</p>
+  <form method="post" class="form">
+    <label>Template</label>
+    <textarea name="template" rows="4" placeholder="Hello"></textarea>
+    <button type="submit">Render</button>
+  </form>
+  <p><a href="{{ url_for('account') }}">Back to account</a></p>
+{% endblock %}

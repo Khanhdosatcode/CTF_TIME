@@ -1,0 +1,7 @@
+version: &#39;3&#39;
+services:
+  portal:
+    build: .
+    ports:
+      - &#34;5001:5000&#34;
+    restart: unless-stopped
